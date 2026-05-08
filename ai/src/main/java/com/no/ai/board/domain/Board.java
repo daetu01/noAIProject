@@ -13,6 +13,8 @@ import lombok.NoArgsConstructor;
 @Entity
 @Getter
 @Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class Board {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -21,4 +23,9 @@ public class Board {
     private String title;
     private String content;
     private String writer;
+
+    public void update(String title, String content) {
+        this.title = title;
+        this.content = content;
+    }
 }

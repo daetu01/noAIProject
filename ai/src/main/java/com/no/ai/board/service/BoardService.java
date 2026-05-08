@@ -35,4 +35,18 @@ public class BoardService {
         boardRepository.save(board);
     }
 
+    public void update(BoardDTO.Put dto) {
+        Board board = boardRepository.findById(dto.getId())
+                        .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 없습니다."));
+
+        board.update(dto.getTitle(), dto.getContent());
+
+        boardRepository.save(board);
+    }
+
+    public void delete(Long id) {
+        Board board = boardRepository.findById(id)
+                        .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 없습니다."));
+        boardRepository.delete(board);
+    }
 }

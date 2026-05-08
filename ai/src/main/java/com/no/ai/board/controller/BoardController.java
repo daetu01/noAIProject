@@ -11,6 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.lang.annotation.Repeatable;
 import java.nio.charset.Charset;
 import java.util.List;
 
@@ -45,4 +46,28 @@ public class BoardController {
 
         return new ResponseEntity<>(message, HttpStatus.OK);
     }
+
+    @PutMapping
+    public ResponseEntity<Message> updateBoard(@RequestBody BoardDTO.Put dto) {
+        boardService.update(dto);
+
+        Message message = new Message();
+        message.setStatus(StatusEnum.OK);
+        message.setMessage("성공 코드");
+
+        return new ResponseEntity<>(message, HttpStatus.OK);
+    }
+
+    @DeleteMapping
+    public ResponseEntity<Message> deleteBoard(@RequestParam Long id) {
+        boardService.delete(id);
+
+        Message message = new Message();
+        message.setStatus(StatusEnum.OK);
+        message.setMessage("성공 코드");
+
+        return new ResponseEntity<>(message, HttpStatus.OK);
+    }
+
+
 }

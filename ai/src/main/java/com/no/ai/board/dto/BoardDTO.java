@@ -24,4 +24,16 @@ public class BoardDTO {
         String content;
         String writer;
     }
+
+    @Getter
+    @Setter
+    @AllArgsConstructor
+    @NoArgsConstructor
+    @Builder
+    public static class Put {
+        Long id;
+        String title;
+        String content;
+        String writer;
+    }
 }
