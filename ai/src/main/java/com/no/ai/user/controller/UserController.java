@@ -31,8 +31,10 @@ public class UserController {
 
     @PostMapping("/signup")
     public ResponseEntity<Long> createUser(@RequestBody UserDTO.CREATE dto) {
+        System.out.println(dto.getEmail() + " " + dto.getNickName() + " " + dto.getPassword());
         UserEntity entity = modelMapper.map(dto, UserEntity.class);
         Long id = userService.create(entity);
         return ResponseEntity.status(HttpStatus.OK).body(id);
     }
+
 }

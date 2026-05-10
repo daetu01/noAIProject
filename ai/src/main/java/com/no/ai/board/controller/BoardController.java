@@ -1,7 +1,9 @@
 package com.no.ai.board.controller;
 
+import com.no.ai.board.domain.Board;
 import com.no.ai.board.dto.BoardDTO;
 import com.no.ai.board.service.BoardService;
+import com.no.ai.global.service.FileService;
 import com.no.ai.global.exception.Message;
 import com.no.ai.global.exception.StatusEnum;
 import lombok.AllArgsConstructor;
@@ -10,8 +12,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
-import java.lang.annotation.Repeatable;
 import java.nio.charset.Charset;
 import java.util.List;
 
@@ -21,6 +23,7 @@ import java.util.List;
 public class BoardController {
 
     private final BoardService boardService;
+    private final FileService fileService;
 
     // 게시글 조회
     @GetMapping
@@ -35,10 +38,13 @@ public class BoardController {
         return new ResponseEntity<>(message, headers, HttpStatus.OK);
     }
 
-    @PostMapping
-    public ResponseEntity<Message> createBoard(@RequestBody BoardDTO.Post dto) {
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Message> createBoard(@RequestPart("dto") BoardDTO.Post dto,
+                                               @RequestPart("file") MultipartFile file) {
 
-        boardService.create(dto);
+
+        Board board = boardService.create(dto);
+        fileService.fileUpload(board, file);
         Message message = new Message();
 
         message.setStatus(StatusEnum.OK);

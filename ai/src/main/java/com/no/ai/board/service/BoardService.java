@@ -25,14 +25,14 @@ public class BoardService {
                 .toList();
     }
 
-    public void create(BoardDTO.Post dto) {
+    public Board create(BoardDTO.Post dto) {
         Board board = Board.builder()
                 .title(dto.getTitle())
                 .content(dto.getContent())
                 .writer(dto.getWriter())
                 .build();
 
-        boardRepository.save(board);
+        return boardRepository.save(board);
     }
 
     public void update(BoardDTO.Put dto) {

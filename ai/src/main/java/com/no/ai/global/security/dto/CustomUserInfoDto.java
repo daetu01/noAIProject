@@ -3,15 +3,13 @@ package com.no.ai.global.security.dto;
 import com.no.ai.user.domain.UserEntity;
 import com.no.ai.user.domain.UserRole;
 import com.no.ai.user.dto.UserDTO;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 @Getter
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
+@Setter
 public class CustomUserInfoDto extends UserDTO {
     private Long userId;
     private String nickName;

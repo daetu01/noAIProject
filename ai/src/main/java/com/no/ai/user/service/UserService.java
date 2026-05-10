@@ -3,6 +3,7 @@ package com.no.ai.user.service;
 import com.no.ai.global.security.dto.CustomUserInfoDto;
 import com.no.ai.global.security.jwt.JwtUtil;
 import com.no.ai.user.domain.UserEntity;
+import com.no.ai.user.domain.UserRole;
 import com.no.ai.user.dto.LoginRequestDto;
 import com.no.ai.user.dto.UserDTO;
 import com.no.ai.user.repository.UserRepository;
@@ -21,6 +22,8 @@ public class UserService {
 
     public Long create(UserEntity entity) {
 
+        entity.setPassword(passwordEncoder.encode(entity.getPassword()));
+        entity.setUserRole(UserRole.USER);
         // 유저 저장하기
         return userRepository.save(entity).getId();
     }
@@ -30,6 +33,8 @@ public class UserService {
         UserEntity user = userRepository.findByEmail(userDto.getEmail())
                 .orElseThrow(() -> new IllegalArgumentException("이메일 또는 비밀번호가 잘못됐습니다."));
 
+
+        System.out.println(user.getNickName() + user.getEmail() + user.getPassword());
         // 2. 비밀번호 일치 여부 확인
         if (!passwordEncoder.matches(userDto.getPassword(), user.getPassword())) {
             throw new IllegalArgumentException("이메일 또는 비밀번호가 잘못되었습니다.");
@@ -37,6 +42,11 @@ public class UserService {
 
         CustomUserInfoDto loginDto = mapper.map(user, CustomUserInfoDto.class);
 
+        UserEntity userEntity = userRepository.findByEmail(loginDto.getEmail())
+                .orElseThrow(() -> new IllegalArgumentException("찾을 수 없는 이메일입니다."));
+
+        loginDto.setUserId(userEntity.getId());
+        loginDto.setUserRole(userEntity.getUserRole());
         // 3. 인증 성공 시 JWT 토큰 생성 및 반환
         return jwtUtil.createAccessToken(loginDto);
     }
