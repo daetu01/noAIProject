@@ -2,8 +2,12 @@ package com.no.ai.inventory.domain;
 
 import com.no.ai.item.domain.Item;
 import jakarta.persistence.*;
+import lombok.Builder;
+import lombok.Getter;
 
 @Entity
+@Builder
+@Getter
 public class InventoryItem {
 
     @Id
@@ -19,4 +23,8 @@ public class InventoryItem {
     private Item item;
 
     private int quantity;
+
+    public void addQuantity(int quantity) {
+        this.quantity += quantity;
+    }
 }

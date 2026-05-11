@@ -20,6 +20,7 @@ public class BoardDTO {
     @NoArgsConstructor
     @Builder
     public static class Get {
+        Long id;
         String title;
         String content;
         String writer;

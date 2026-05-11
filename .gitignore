@@ -1,0 +1,48 @@
+# ===== OS =====
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ===== IDE =====
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ===== Logs =====
+*.log
+logs/
+
+# ===== Secrets / Environment =====
+.env
+.env.local
+.env.*.local
+application-local.yaml
+application-secret.yaml
+application-prod.yaml
+
+# ===== Java / Spring Boot (ai/) =====
+ai/target/
+ai/.gradle/
+ai/build/
+ai/*.jar
+ai/*.war
+ai/*.class
+ai/.mvn/
+ai/mvnw.cmd
+
+# ===== Node / Vue (no-/) =====
+no-/node_modules/
+no-/dist/
+no-/.vite/
+no-/coverage/
+no-/*.local
+
+# ===== TypeScript build cache =====
+no-/node_modules/.tmp/

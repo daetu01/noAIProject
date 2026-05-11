@@ -2,12 +2,14 @@ package com.no.ai.money.domain;
 
 import com.no.ai.user.domain.UserEntity;
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 @Entity
 @Getter
 @Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class Money {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)

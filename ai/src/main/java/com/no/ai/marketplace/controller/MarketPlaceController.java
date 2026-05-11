@@ -20,6 +20,15 @@ import org.springframework.web.bind.annotation.*;
 public class MarketPlaceController {
     private final MarketPlaceService marketPlaceService;
 
+    @GetMapping
+    public ResponseEntity<Message> getAllItems() {
+        Message message = new Message();
+        message.setStatus(StatusEnum.OK);
+        message.setMessage("성공 코드");
+        message.setData(marketPlaceService.getAll());
+        return new ResponseEntity<>(message, HttpStatus.OK);
+    }
+
     /**
      * 상품 등록 로직
      * @param userDetails
@@ -44,7 +53,7 @@ public class MarketPlaceController {
      * @return
      */
     @PutMapping("/update")
-    public ResponseEntity<Message> updateItem(@AuthenticationPrincipal CustomUserDetails userDetails, @RequestBody MarketPlaceDto.CREATE dto) {
+    public ResponseEntity<Message> updateItem(@AuthenticationPrincipal CustomUserDetails userDetails, @RequestBody MarketPlaceDto.UPDATE dto) {
         marketPlaceService.updateItem(userDetails, dto);
         Message message = new Message();
 

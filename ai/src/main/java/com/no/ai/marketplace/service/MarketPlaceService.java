@@ -12,6 +12,8 @@ import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class MarketPlaceService {
@@ -37,8 +39,22 @@ public class MarketPlaceService {
         marketPlaceRepository.save(marketPlace);
     }
 
-    public void updateItem(CustomUserDetails user, MarketPlaceDto.CREATE dto) {
-        Marketplace marketplace = marketPlaceRepository.findByName(dto.getName())
+    public List<MarketPlaceDto.GET> getAll() {
+        return marketPlaceRepository.findAll().stream()
+                .map(m -> new MarketPlaceDto.GET(
+                        m.getId(),
+                        m.getItem().getName(),
+                        m.getPrice(),
+                        m.getRegisterUser().getNickName()
+                ))
+                .toList();
+    }
+
+    public void updateItem(CustomUserDetails user, MarketPlaceDto.UPDATE dto) {
+        Item item = itemRepository.findByName(dto.getName())
+                .orElseThrow(() -> new IllegalArgumentException("없는 아이템입니다."));
+
+        Marketplace marketplace = marketPlaceRepository.findByItem(item)
                 .orElseThrow(() -> new IllegalArgumentException("없는 거래 정보입니다."));
 
         UserEntity userEntity = userRepository.findById(user.getUser().getUserId())

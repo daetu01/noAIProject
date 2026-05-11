@@ -18,6 +18,7 @@ public class BoardService {
 
         return boardList.stream()
                 .map(board -> BoardDTO.Get.builder()
+                        .id(board.getId())
                         .title(board.getTitle())
                         .content(board.getContent())
                         .writer(board.getWriter())
