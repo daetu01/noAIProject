@@ -1,0 +1,51 @@
+services:
+  mysql:
+    image: mysql:8.2
+    container_name: noai-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-ssafy1234}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-noai}
+      TZ: Asia/Seoul
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_ROOT_PASSWORD:-ssafy1234}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./ai
+    container_name: noai-backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-noai}?useSSL=false&serverTimezone=Asia/Seoul&characterEncoding=UTF-8&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-ssafy1234}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: ${SPRING_JPA_HIBERNATE_DDL_AUTO:-update}
+      JWT_SECRET: ${JWT_SECRET:-RElBUllfQU5EX0NPTU1VTklUWV9QUk9KRUNUX0RBV05BUllfQURNSU5fU0VDUkVUX0tFWQ==}
+      TZ: Asia/Seoul
+    expose:
+      - "8080"
+
+  frontend:
+    build:
+      context: ./no-
+      args:
+        VITE_API_BASE_URL: /api
+    container_name: noai-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${APP_PORT:-80}:80"
+
+volumes:
+  mysql-data:
