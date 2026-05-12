@@ -10,4 +10,11 @@ public class ItemDto {
         private int eqLevel;
         private String description;
     }
+
+    @Getter
+    public static class GET {
+        private String name;
+        private int eqLevel;
+        private String description;
+    }
 }

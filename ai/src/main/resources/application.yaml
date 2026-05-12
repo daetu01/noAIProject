@@ -5,7 +5,7 @@ spring:
   jpa:
     open-in-view: true
     hibernate:
-      ddl-auto: create
+      ddl-auto: update
       naming:
         physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
       use-new-id-generator-mappings: false
@@ -25,4 +25,12 @@ jwt:
   expiration_time: 864000000
   secret: RElBUllfQU5EX0NPTU1VTklUWV9QUk9KRUNUX0RBV05BUllfQURNSU5fU0VDUkVUX0tFWQ==
 
+api:
+  maple:
+    key: ${MAPLE_API_KEY}
+    base-url: ${MAPLE_BASE_URL}
+
+  wow:
+    key: ${WOW_API_KEY}
+    base-url: ${WOW_BASE_URL}
 

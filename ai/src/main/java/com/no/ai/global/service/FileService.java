@@ -32,7 +32,7 @@ public class FileService {
     public void fileUpload(Board board, MultipartFile multipartFile) {
         Path copyOfLocation = Paths.get(uploadFileDir + File.separator + StringUtils.cleanPath(multipartFile.getOriginalFilename()));
 
-        board.updateUploadDir(uploadFileDir);
+        board.updateUploadDir(copyOfLocation.toString());
 
         boardRepository.save(board);
 

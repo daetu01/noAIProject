@@ -24,6 +24,7 @@ public class BoardDTO {
         String title;
         String content;
         String writer;
+        String uploadDir;
     }
 
     @Getter

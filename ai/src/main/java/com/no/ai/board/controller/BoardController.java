@@ -2,11 +2,13 @@ package com.no.ai.board.controller;
 
 import com.no.ai.board.domain.Board;
 import com.no.ai.board.dto.BoardDTO;
+import com.no.ai.board.dto.ImageDto;
 import com.no.ai.board.service.BoardService;
 import com.no.ai.global.service.FileService;
 import com.no.ai.global.exception.Message;
 import com.no.ai.global.exception.StatusEnum;
 import lombok.AllArgsConstructor;
+import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -75,5 +77,24 @@ public class BoardController {
         return new ResponseEntity<>(message, HttpStatus.OK);
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<Message> getBoard(@PathVariable Long id) {
+        BoardDTO.Get board = boardService.getBoard(id);
+
+        Message message = new Message();
+        message.setStatus(StatusEnum.OK);
+        message.setMessage("성공 코드");
+        message.setData(board);
+        return new ResponseEntity<>(message, HttpStatus.OK);
+    }
+
+    @GetMapping("/image/{id}")
+    public ResponseEntity<Resource> getImage(@PathVariable Long id) {
+        ImageDto.Response response = boardService.getImage(id);
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(response.getContentType()))
+                .body(response.getResource());
+    }
 
 }

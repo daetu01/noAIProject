@@ -9,6 +9,8 @@ import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class ItemService {
@@ -18,5 +20,14 @@ public class ItemService {
     public Item registerByAdmin(ItemDto.CREATE dto) {
         Item item = modelMapper.map(dto, Item.class);
         return itemRepository.save(item);
+    }
+
+
+    public List<ItemDto.GET> getItems() {
+        List<Item> items = itemRepository.findAll();
+
+        return items.stream()
+                .map(item -> modelMapper.map(item, ItemDto.GET.class))
+                .toList();
     }
 }
