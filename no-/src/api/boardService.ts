@@ -5,6 +5,7 @@ export interface BoardItem {
   title: string
   content: string
   writer: string
+  uploadDir?: string
 }
 
 export interface CreateBoardRequest {
@@ -17,6 +18,10 @@ export interface CreateBoardRequest {
 export const boardService = {
   getAll(): Promise<BoardItem[]> {
     return client.get<{ data: BoardItem[] }>('/board').then(res => res.data.data)
+  },
+
+  getOne(id: number): Promise<BoardItem> {
+    return client.get<{ data: BoardItem }>(`/board/${id}`).then(res => res.data.data)
   },
 
   create(data: CreateBoardRequest): Promise<void> {
@@ -35,4 +40,7 @@ export const boardService = {
   remove(id: number): Promise<void> {
     return client.delete(`/board?id=${id}`)
   },
+
+ 
+
 }

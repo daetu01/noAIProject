@@ -23,6 +23,21 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/board/:id',
+      component: () => import('@/pages/boardDetail.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/games',
+      component: () => import('@/pages/games/index.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/games/maple',
+      component: () => import('@/pages/games/maple.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/market',
       component: () => import('@/pages/market.vue'),
       meta: { requiresAuth: true },

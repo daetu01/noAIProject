@@ -1,81 +1,23 @@
 @layer vuetify-overrides {
-  code, pre, .v-code {
-    font-family: var(--font-mono);
-  }
+  code, pre, .v-code { font-family: var(--font-mono); }
 }
-
-* {
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+* { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
 
 .v-application {
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif !important;
-  background-color: #F5F5F7 !important;
+  background-color: #F5F5F5 !important;
 }
-
-/* Apple-style card shadow */
-.apple-card {
-  background: #FFFFFF;
-  border-radius: 16px !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06), 0 0 1px rgba(0, 0, 0, 0.04) !important;
-  border: none !important;
-}
-
-/* Frosted glass */
 .apple-glass {
-  background: rgba(255, 255, 255, 0.82) !important;
-  backdrop-filter: saturate(180%) blur(20px) !important;
-  -webkit-backdrop-filter: saturate(180%) blur(20px) !important;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+  background: rgba(255,255,255,0.92) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border-bottom: 1px solid rgba(0,0,0,0.08) !important;
 }
-
-/* Page title */
-.page-title {
-  font-size: 28px;
-  font-weight: 700;
-  color: #1D1D1F;
-  letter-spacing: -0.5px;
+.apple-card {
+  background: #FFFFFF !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(0,0,0,0.07) !important;
+  box-shadow: none !important;
 }
-
-/* Section subtitle */
-.page-subtitle {
-  font-size: 15px;
-  color: #6E6E73;
-  font-weight: 400;
-}
-
-/* Divider */
-.apple-divider {
-  border-color: rgba(0, 0, 0, 0.06) !important;
-}
-
-/* Text colors */
-.text-apple-primary { color: #1D1D1F !important; }
-.text-apple-secondary { color: #6E6E73 !important; }
-.text-apple-blue { color: #0071E3 !important; }
-
-/* Apple-style list row */
-.apple-list-item {
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-  padding: 14px 0;
-}
-.apple-list-item:last-child {
-  border-bottom: none;
-}
-
-/* Input focus ring like Apple */
-.v-field--focused .v-field__outline {
-  border-color: #0071E3 !important;
-  border-width: 1.5px !important;
-}
-
-/* Smooth page transitions */
-.router-view-enter-active,
-.router-view-leave-active {
-  transition: opacity 0.2s ease;
-}
-.router-view-enter-from,
-.router-view-leave-to {
-  opacity: 0;
-}
+.router-view-enter-active, .router-view-leave-active { transition: opacity 0.18s ease; }
+.router-view-enter-from, .router-view-leave-to { opacity: 0; }
