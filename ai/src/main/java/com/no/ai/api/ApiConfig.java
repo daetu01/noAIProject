@@ -11,6 +11,7 @@ public class ApiConfig {
 
     private final Maple maple;
     private final Wow wow;
+    private final City city;
 
     public ApiConfig() {
 
@@ -25,6 +26,11 @@ public class ApiConfig {
                 dotenv.get("WOW_CLIENT_ID"),
                 dotenv.get("WOW_CLIENT_SECRET"),
                 dotenv.get("WOW_BASE_URL")
+        );
+
+        this.city = new City(
+                dotenv.get("SERVICE_KEY"),
+                dotenv.get("value2")
         );
     }
 
@@ -41,6 +47,13 @@ public class ApiConfig {
         private String clientId;
         private String clientSecret;
         private String baseUrl;
+    }
+
+    @Getter
+    @AllArgsConstructor
+    public static class City {
+        private String serviceKey;
+        private String value2;
     }
 }
 
