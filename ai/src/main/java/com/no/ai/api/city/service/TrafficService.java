@@ -2,6 +2,7 @@ package com.no.ai.api.city.service;
 
 import com.no.ai.api.ApiConfig;
 import com.no.ai.api.city.dto.SpotInfoResponse;
+import com.no.ai.api.city.repository.TrafficSpotRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
@@ -12,7 +13,7 @@ import org.springframework.web.client.RestClient;
 public class TrafficService {
     private final ApiConfig apiConfig;
     private final RestClient restClient;
-
+    private final TrafficSpotRepository trafficSpotRepository;
     /**
      * 교통 지점 가져오는 정보
      * @return
@@ -24,6 +25,8 @@ public class TrafficService {
                             apiConfig.getCity().getServiceKey())
                     .retrieve()
                     .body(SpotInfoResponse.class);
+
+            // 여기서 저장하는 로직
 
             return response;
         } catch (Exception e) {
