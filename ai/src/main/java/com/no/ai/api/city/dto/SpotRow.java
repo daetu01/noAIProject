@@ -1,7 +1,11 @@
 package com.no.ai.api.city.dto;
 
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
+import lombok.Getter;
+import lombok.Setter;
 
+@Getter
+@Setter
 public class SpotRow {
     @JacksonXmlProperty(localName = "spot_num")
     private String spotNum;
