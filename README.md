@@ -212,16 +212,9 @@ WebSocket:
 
 ## 8. 트러블슈팅
 
-| 문제 | 원인 | 해결 |
-| --- | --- | --- |
-| `TrafficEvent`에 사고 원인이 표시되지 않음 | 위험 이벤트 생성 시 `aiAnomaly=true`인 경우에만 `TrafficIncident`를 조회함 | `WARNING`/`DANGER`이면 AI 이상 여부와 관계없이 사고 정보를 먼저 조회하도록 변경 |
-| 사고 정보가 실제 영향 시간대와 매칭되지 않음 | `occurTime BETWEEN startTime AND endTime`만 사용해서 이미 발생해 지속 중인 사고를 놓침 | `occurTime <= endTime` 그리고 `expectedClearTime >= startTime` 조건으로 사고 지속 구간 overlap 매칭 적용 |
-| 지점명 때문에 사고 정보가 매칭되지 않음 | `성산로(금화터널)` 같은 전체 지점명으로 `accInfo LIKE` 검색 | 괄호 앞 도로명만 추출하는 `extractRoadKeyword()` 적용 |
-| 교통 상세 메시지에 동일한 원인 블록이 반복 출력됨 | 5분마다 도는 사고 업데이트가 기존 메시지에 계속 append | 메시지를 append하지 않고 `buildEventMessage()`로 매번 재생성해 덮어쓰기 |
-| 같은 지점/날짜/시간 이벤트가 중복 저장됨 | 위험도 계산 시 매번 `TrafficEvent.create()` 호출 | 기존 최신 이벤트를 조회한 뒤 있으면 update, 없으면 create |
-| Swagger에서 Traffic API 설명이 부족함 | 일부 엔드포인트에만 `@Operation` 존재 | Traffic Controller와 DTO에 `@Operation`, `@Parameter`, `@ApiResponse`, `@Schema` 보강 |
-| AI 예측 실패 | Spring backend가 `http://localhost:8000/predict`를 호출하지만 FastAPI 서버가 실행되지 않음 | `pythonAI`에서 `uvicorn main:app --host 0.0.0.0 --port 8000` 실행 |
-| Redis 연결 실패 가능성 | `application.yaml`은 Redis cache를 사용하지만 Docker Compose에는 Redis 서비스가 없음 | 로컬/배포 환경에 Redis를 별도 실행하거나 cache 설정을 환경에 맞게 조정 |
+개발 중 겪은 문제와 해결 과정은 별도 문서로 정리했습니다.
+
+- [트러블슈팅 문서](docs/troubleshooting.md)
 
 ## 9. 실행 방법 Docker Compose
 

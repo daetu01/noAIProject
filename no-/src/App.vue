@@ -1,11 +1,17 @@
 <template>
-  <v-app>
-    <Navbar v-if="showLayout" />
+  <!-- Studio landing: no Vuetify layout wrapper -->
+  <div v-if="isStudio" id="studio-root">
+    <RouterView />
+  </div>
+
+  <!-- Service app: original Vuetify layout -->
+  <v-app v-else theme="dark">
+    <Navbar v-if="showServiceNav" />
     <v-main>
-      <router-view />
+      <RouterView />
     </v-main>
-    <BottomNavibar v-if="showLayout" />
-    <ChatBot v-if="showLayout" />
+    <BottomNavibar v-if="showServiceNav" />
+    <ChatBot v-if="showServiceNav" />
   </v-app>
 </template>
 
@@ -17,11 +23,18 @@ import BottomNavibar from './components/bottomNavibar.vue'
 import ChatBot from './components/ChatBot.vue'
 
 const route = useRoute()
-const noLayoutRoutes = ['/login', '/signup']
-const showLayout = computed(() => !noLayoutRoutes.includes(route.path))
+
+// Studio layout: landing + auth pages (no Vuetify wrapper)
+const studioRoutes = ['/', '/login', '/signup']
+const isStudio = computed(() => studioRoutes.includes(route.path))
+
+// Service app auth pages don't show nav
+const noNavRoutes = ['/login', '/signup']
+const showServiceNav = computed(() => !noNavRoutes.includes(route.path))
 </script>
 
 <style>
+/* Service app layout — only active when v-app is rendered */
 .v-main {
   padding-top: 56px !important;
   padding-bottom: 72px !important;

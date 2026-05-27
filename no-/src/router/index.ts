@@ -4,6 +4,13 @@ import { useAppStore } from '@/stores/app'
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
+    // ─── Studio (no auth) ──────────────────────────────
+    {
+      path: '/',
+      component: () => import('@/pages/StudioPage.vue'),
+    },
+
+    // ─── Auth pages ────────────────────────────────────
     {
       path: '/login',
       component: () => import('@/pages/login.vue'),
@@ -12,11 +19,8 @@ const router = createRouter({
       path: '/signup',
       component: () => import('@/pages/signup.vue'),
     },
-    {
-      path: '/',
-      component: () => import('@/pages/index.vue'),
-      meta: { requiresAuth: true },
-    },
+
+    // ─── Service app (auth required) ───────────────────
     {
       path: '/city',
       component: () => import('@/pages/city/index.vue'),
@@ -57,22 +61,30 @@ const router = createRouter({
       component: () => import('@/pages/admin.vue'),
       meta: { requiresAuth: true, requiresAdmin: true },
     },
+
+    // ─── Fallback ──────────────────────────────────────
+    { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
+  scrollBehavior(to) {
+    if (to.hash) return { el: to.hash, behavior: 'smooth', top: 72 }
+    return { top: 0, behavior: 'smooth' }
+  },
 })
 
 router.beforeEach(to => {
+  // Studio page is always public
+  if (to.path === '/') return
+
   const store = useAppStore()
 
   if (to.meta.requiresAuth && !store.isLoggedIn) {
     return { path: '/login' }
   }
-
   if (to.meta.requiresAdmin && !store.isAdmin) {
     return { path: '/' }
   }
-
   if ((to.path === '/login' || to.path === '/signup') && store.isLoggedIn) {
-    return { path: '/' }
+    return { path: '/city' }
   }
 })
 
