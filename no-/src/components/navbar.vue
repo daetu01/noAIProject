@@ -34,12 +34,13 @@ function logout() {
     </div>
     <div style="height:1px; background:rgba(0,0,0,0.08); margin:0 24px 12px" />
     <v-list nav density="compact" class="px-3">
-      <v-list-item prepend-icon="mdi-home-outline"         title="홈"           to="/"          rounded="lg" active-color="#111" />
-      <v-list-item prepend-icon="mdi-note-text-outline"    title="게시판"        to="/board"     rounded="lg" active-color="#111" />
-      <v-list-item prepend-icon="mdi-sword"                title="게임 검색"     to="/games"     rounded="lg" active-color="#111" />
-      <v-list-item prepend-icon="mdi-storefront-outline"   title="마켓플레이스"  to="/market"    rounded="lg" active-color="#111" />
-      <v-list-item prepend-icon="mdi-bag-personal-outline" title="인벤토리"      to="/inventory" rounded="lg" active-color="#111" />
-      <v-list-item v-if="store.isAdmin" prepend-icon="mdi-shield-crown-outline" title="관리자" to="/admin" rounded="lg" active-color="#111" />
+      <v-list-item prepend-icon="mdi-home-outline"         title="홈"           to="/"          rounded="lg" base-color="#111" />
+      <v-list-item prepend-icon="mdi-city"               title="도시 모니터링"  to="/city"      rounded="lg" base-color="#111" />
+      <v-list-item prepend-icon="mdi-note-text-outline"    title="게시판"        to="/board"     rounded="lg" base-color="#111" />
+      <v-list-item prepend-icon="mdi-sword"                title="게임 검색"     to="/games"     rounded="lg" base-color="#111" />
+      <v-list-item prepend-icon="mdi-storefront-outline"   title="마켓플레이스"  to="/market"    rounded="lg" base-color="#111" />
+      <v-list-item prepend-icon="mdi-bag-personal-outline" title="인벤토리"      to="/inventory" rounded="lg" base-color="#111" />
+      <v-list-item v-if="store.isAdmin" prepend-icon="mdi-shield-crown-outline" title="관리자" to="/admin" rounded="lg" base-color="#111" />
     </v-list>
   </v-navigation-drawer>
 </template>
