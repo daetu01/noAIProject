@@ -27,9 +27,17 @@ public class SecurityConfig {
     private final JwtUtil jwtUtil;
 
 
-    private static final String[] AUTH_WHITELIST = {"/user/login", "/user/signup",
-            "/swagger-ui/**", "/api-docs", "/swagger-ui-custom.html", "/board/image/**", "/ws/**",
-            "/api/test-alert", "/test.html"};
+    private static final String[] AUTH_WHITELIST = {
+            "/user/login",
+            "/user/signup",
+            "/api-docs",
+            "/swagger-ui-custom.html",
+            "/board/image/**",
+            "/ws/**",
+            "/api/test-alert",
+            "/test.html",
+            "/swagger-ui/**",
+            "/v3/api-docs/**"};
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {

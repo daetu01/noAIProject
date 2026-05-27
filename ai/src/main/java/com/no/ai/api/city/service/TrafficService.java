@@ -9,6 +9,9 @@ import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cglib.core.Local;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -33,6 +36,7 @@ import java.util.stream.Collectors;
 public class TrafficService {
     private final ApiConfig apiConfig;
     private final RestClient restClient;
+    private final CacheManager cacheManager;
 
     @Qualifier("taskExecutor")
     private final Executor executor;
@@ -287,6 +291,7 @@ public class TrafficService {
         );
 
         collect(spots, today, hour) ;
+        clearRiskCache();
     }
 
     public void collect (
@@ -378,6 +383,10 @@ public class TrafficService {
         return response;
     }
 
+    @Cacheable(
+            value = "trafficRisks",
+            key = "#ymd + ':' + #hour"
+    )
     public List<TrafficVolumeDto.RiskResponses> getRisksInfo(String ymd, int hour) {
         LocalDate date = LocalDate.parse(ymd, DateTimeFormatter.BASIC_ISO_DATE);
 
@@ -401,6 +410,8 @@ public class TrafficService {
         return responseList;
     }
 
+    @Cacheable(value = "trafficDetail",
+    key = "#spotNum + ':' + #ymd + ':' + #hour")
     public TrafficVolumeDto.Detail getDetailInfo(String spotNum, String ymd, int hour) {
         LocalDate date =
                 LocalDate.parse(
@@ -724,6 +735,7 @@ public class TrafficService {
 
             log.info("돌발 교통 정보 업데이트");
             updateEventIncidents();
+            clearDetailCache();
         } catch (Exception e) {
             log.error("돌발 교통 정보 수집 실패", e);
         }
@@ -872,5 +884,20 @@ public class TrafficService {
         );
     }
 
+    private void clearRiskCache() {
+        Cache cache =
+                cacheManager.getCache("trafficRisks");
 
+        if (cache != null) {
+            cache.clear();
+        }
+
+        clearDetailCache();
+
+    }
+    private void clearDetailCache() {
+        Optional.ofNullable(
+                cacheManager.getCache("trafficDetail")
+        ).ifPresent(Cache::clear);
+    }
 }
