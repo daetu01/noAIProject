@@ -1,9 +1,6 @@
 package com.no.ai.api.city.domain;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
@@ -21,5 +18,42 @@ public class TrafficEvent {
 
     private Double riskRate;
     private Status status;
+    @Column(columnDefinition = "TEXT")
+    private String message;
     private LocalDateTime recordedAt;
+
+    public static TrafficEvent create(
+            String spotNum,
+            int hour,
+            Double riskRate,
+            String message,
+            Status status
+    ){
+        TrafficEvent event = new TrafficEvent();
+
+        event.spotNum = spotNum;
+        event.hour = hour;
+        event.riskRate = riskRate;
+        event.message = message;
+        event.status = status;
+        event.recordedAt = LocalDateTime.now();
+        return event;
+    }
+
+    public void updateMessage(
+            String message
+    ) {
+        this.message = message;
+    }
+
+    public void update(
+            Double riskRate,
+            String message,
+            Status status
+    ) {
+        this.riskRate = riskRate;
+        this.message = message;
+        this.status = status;
+        this.recordedAt = LocalDateTime.now();
+    }
 }

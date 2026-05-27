@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WS Test</title>
+</head>
+<body>
+
+<h1>WebSocket Test</h1>
+
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7/bundles/stomp.umd.min.js"></script>
+
+<script>
+
+const socket =
+    new SockJS(
+        "http://localhost:8080/ws"
+    );
+
+const client =
+    new StompJs.Client({
+        webSocketFactory: () => socket,
+
+        debug: (str) => {
+            console.log(str);
+        }
+    });
+
+client.onConnect = () => {
+
+    console.log(
+        "연결 성공"
+    );
+
+    client.subscribe(
+        "/topic/traffic-alerts",
+        (message) => {
+
+            console.log(
+                "수신:",
+                JSON.parse(
+                    message.body
+                )
+            );
+
+        }
+    );
+
+};
+
+client.activate();
+
+</script>
+
+</body>
+</html>

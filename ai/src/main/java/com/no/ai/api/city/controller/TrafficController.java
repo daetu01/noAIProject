@@ -1,8 +1,6 @@
 package com.no.ai.api.city.controller;
 
-import com.no.ai.api.city.dto.SpotInfoResponse;
-import com.no.ai.api.city.dto.TrafficVolumeDto;
-import com.no.ai.api.city.dto.VolInfoResponse;
+import com.no.ai.api.city.dto.*;
 import com.no.ai.api.city.service.TrafficService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -49,7 +47,19 @@ public class TrafficController {
     }
 
     @GetMapping("/details/{spotNum}")
-    public TrafficVolumeDto.Detail getDetail(@PathVariable String spotNum, @RequestParam String ymd) {
-        return trafficService.getDetailInfo(spotNum, ymd);
+    public TrafficVolumeDto.Detail getDetail(@PathVariable String spotNum, @RequestParam String ymd, @RequestParam int hour) {
+        return trafficService.getDetailInfo(spotNum, ymd, hour);
+    }
+
+    @GetMapping("/events")
+    public List<TrafficEventDto.Response> getEvents() {
+        return trafficService.getEventsInfo();
+    }
+
+    @GetMapping("/dataset")
+    public List<TrafficDatasetDto.Response>
+    getDataset() {
+
+        return trafficService.getDataset();
     }
 }

@@ -99,6 +99,12 @@ public class TrafficVolumeDto {
         private Double riskScore;
         private Status status;
         private List<TrafficVolumeDto.VolumeResponse> todayVolumes;
+        // AI 분석 결과
+        private Boolean aiAnomaly;
+        private Double aiScore;
+        private String aiStatus;
+        // 위험 원인 메시지
+        private String message;
     }
 }
 

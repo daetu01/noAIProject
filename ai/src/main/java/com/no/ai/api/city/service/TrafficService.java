@@ -1,20 +1,23 @@
 package com.no.ai.api.city.service;
 
 import com.no.ai.api.ApiConfig;
-import com.no.ai.api.city.domain.Status;
-import com.no.ai.api.city.domain.TrafficSpot;
-import com.no.ai.api.city.domain.TrafficVolume;
+import com.no.ai.api.city.domain.*;
 import com.no.ai.api.city.dto.*;
-import com.no.ai.api.city.repository.TrafficSpotRepository;
-import com.no.ai.api.city.repository.TrafficVolumeRepository;
+import com.no.ai.api.city.repository.*;
+import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.cglib.core.Local;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -23,16 +26,24 @@ import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 
 
-@RequiredArgsConstructor
+
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class TrafficService {
     private final ApiConfig apiConfig;
     private final RestClient restClient;
+
+    @Qualifier("taskExecutor")
     private final Executor executor;
+
     private final TrafficVolumeRepository trafficVolumeRepository;
     private final TrafficSpotRepository trafficSpotRepository;
+    private final TrafficRiskRepository trafficRiskRepository;
+    private final TrafficEventRepository trafficEventRepository;
+    private final TrafficIncidentRepository trafficIncidentRepository;
 
+    private final SimpMessagingTemplate messagingTemplate;
     /**
      * 교통 지점 가져오는 정보
      * @return
@@ -196,9 +207,17 @@ public class TrafficService {
                     );
 
             TrafficVolume saved =
-                    trafficVolumeRepository.save(
-                            trafficVolume
-                    );
+                    trafficVolumeRepository
+                            .findBySpotNumAndYmdAndHour(
+                                    trafficVolume.getSpotNum(),
+                                    trafficVolume.getYmd(),
+                                    trafficVolume.getHour()
+                            )
+                            .orElseGet(() ->
+                                    trafficVolumeRepository.save(trafficVolume)
+                            );
+
+            saveRiskSnapshot(saved);
 
             return TrafficVolumeDto.Response.from(saved);
 
@@ -240,7 +259,7 @@ public class TrafficService {
         }
     }
 
-    @Scheduled(cron = "0 0 * * * *")
+    @Scheduled(cron = "0 30 * * * *")
         public void collectTrafficData() {
             List<TrafficSpot> spots =
                     trafficSpotRepository.findAll();
@@ -251,10 +270,21 @@ public class TrafficService {
                                 DateTimeFormatter.BASIC_ISO_DATE
                         );
 
+
+        LocalDateTime targetTime =
+                LocalDateTime.now()
+                        .minusHours(1);
+
         String hour =
                 String.valueOf(
-                        LocalTime.now().getHour()
+                        targetTime.getHour()
                 );
+
+        log.info(
+                "교통 수집 시작 ymd={}, hour={}",
+                today,
+                hour
+        );
 
         collect(spots, today, hour) ;
     }
@@ -330,70 +360,48 @@ public class TrafficService {
                         )
                         .orElseThrow();
 
-        Double average = trafficVolumeRepository.findAverageVolume(spotNum);
-
-        Double riskScore = (average == null || average == 0.0)
-                ? 100.0
-                : current.getTotalVolume() / average * 100;
-
-        Status status = getStatus(riskScore);
+        TrafficRisk trafficRisk =
+                trafficRiskRepository
+                        .findBySpotNum(spotNum)
+                        .orElseThrow();
 
         TrafficVolumeDto.RiskResponse response = TrafficVolumeDto.RiskResponse
                 .builder()
                 .hour(hour)
-                .riskScore(riskScore)
-                .averageVolume(average)
+                .riskScore(trafficRisk.getRiskScore())
+                .averageVolume(trafficRisk.getAverageVolume())
                 .spotNum(spotNum)
                 .currentVolume(Double.parseDouble(current.getTotalVolume().toString()))
-                .status(status)
+                .status(trafficRisk.getStatus())
                 .build();
 
         return response;
     }
 
     public List<TrafficVolumeDto.RiskResponses> getRisksInfo(String ymd, int hour) {
-        LocalDate date =
-                LocalDate.parse(
-                        ymd,
-                        DateTimeFormatter.BASIC_ISO_DATE
-                );
+        LocalDate date = LocalDate.parse(ymd, DateTimeFormatter.BASIC_ISO_DATE);
 
-        List<TrafficVolume> trafficVolumes = trafficVolumeRepository.findByYmdAndHour(date, hour)
-                .orElse(Collections.emptyList());
-        if (trafficVolumes.isEmpty()) return Collections.emptyList();
+        List<TrafficRisk> risks = trafficRiskRepository.findByYmdAndHour(date, hour);
+        if (risks.isEmpty()) return Collections.emptyList();
+
         List<TrafficVolumeDto.RiskResponses> responseList = new ArrayList<>();
+        for (TrafficRisk risk : risks) {
+            TrafficSpot spot = trafficSpotRepository.findBySpotNum(risk.getSpotNum()).orElse(null);
+            if (spot == null) continue;
 
-
-
-        for (TrafficVolume trafficVolume : trafficVolumes) {
-            TrafficSpot trafficSpot = trafficSpotRepository.findBySpotNum(trafficVolume.getSpotNum())
-                    .orElseThrow();
-            String spotName = trafficSpot.getSpotName();
-
-            Double average = trafficVolumeRepository.findAverageVolume(trafficVolume.getSpotNum());
-
-            Double riskScore = (average == null || average == 0.0)
-                    ? 100.0
-                    : trafficVolume.getTotalVolume() / average * 100;
-
-            Status status = getStatus(riskScore);
-
-            TrafficVolumeDto.RiskResponses riskResponse = TrafficVolumeDto.RiskResponses.builder()
-                    .riskScore(riskScore)
-                    .spotNum(trafficVolume.getSpotNum())
-                    .spotName(spotName)
-                    .status(status)
-                    .tmX(trafficSpot.getTmX())
-                    .tmY(trafficSpot.getTmY())
-                    .build();
-
-            responseList.add(riskResponse);
+            responseList.add(TrafficVolumeDto.RiskResponses.builder()
+                    .spotNum(risk.getSpotNum())
+                    .spotName(spot.getSpotName())
+                    .riskScore(risk.getRiskScore())
+                    .status(risk.getStatus())
+                    .tmX(spot.getTmX())
+                    .tmY(spot.getTmY())
+                    .build());
         }
-
         return responseList;
     }
 
-    public TrafficVolumeDto.Detail getDetailInfo(String spotNum, String ymd) {
+    public TrafficVolumeDto.Detail getDetailInfo(String spotNum, String ymd, int hour) {
         LocalDate date =
                 LocalDate.parse(
                         ymd,
@@ -423,41 +431,27 @@ public class TrafficService {
                                                 "지점 없음"
                                         )
                         );
-        // 최신 시간 데이터 사용
-        TrafficVolume latest =
-                trafficVolumes.stream()
-                        .max(
-                                Comparator.comparing(
-                                        TrafficVolume::getHour
-                                )
-                        )
-                        .orElseThrow();
 
-        Double average = trafficVolumeRepository.findAverageVolume(spotNum);
+        TrafficRisk trafficRisk = trafficRiskRepository.findBySpotNumAndYmdAndHour(spotNum, date, hour)
+                .orElseThrow();
 
-        Double riskScore = (average == null || average == 0.0)
-                ? 100.0
-                : latest.getTotalVolume() / average * 100;
-
-        Status status = getStatus(riskScore);
-
+        String message = trafficEventRepository.findLatestBySpotAndHourAndDate(
+                spotNum,
+                hour,
+                date.atStartOfDay(),
+                date.plusDays(1).atStartOfDay()
+        ).map(TrafficEvent::getMessage).orElse(null);
 
         return TrafficVolumeDto.Detail.builder()
-                .spotName(
-                        spot.getSpotName()
-                )
-                .spotNum(
-                        spotNum
-                )
-                .riskScore(
-                        riskScore
-                )
-                .status(
-                        status
-                )
-                .todayVolumes(
-                        volumes
-                )
+                .spotName(spot.getSpotName())
+                .spotNum(spotNum)
+                .riskScore(trafficRisk.getRiskScore())
+                .status(trafficRisk.getStatus())
+                .todayVolumes(volumes)
+                .aiAnomaly(trafficRisk.getAiAnomaly())
+                .aiScore(trafficRisk.getAiScore())
+                .aiStatus(trafficRisk.getAiStatus())
+                .message(message)
                 .build();
     }
 
@@ -474,6 +468,408 @@ public class TrafficService {
         }
 
         return Status.NORMAL;
+    }
+
+    private void saveRiskSnapshot(
+            TrafficVolume saved
+    ){
+
+        Double average =
+                trafficVolumeRepository
+                        .findAverageVolume(
+                                saved.getSpotNum()
+                        );
+
+        Double riskScore =
+                (average == null || average == 0)
+                        ? 100.0
+                        : saved.getTotalVolume()
+                          / average
+                          *100;
+
+        Status status =
+                getStatus(
+                        riskScore
+                );
+
+        AiPredictResponse aiResponse =
+                requestAiPrediction(saved);
+
+        TrafficRisk risk =
+                trafficRiskRepository
+                        .findBySpotNumAndYmdAndHour(
+                                saved.getSpotNum(),
+                                saved.getYmd(),
+                                saved.getHour()
+                        )
+                        .orElse(
+                                TrafficRisk.builder()
+                                        .spotNum(
+                                                saved.getSpotNum()
+                                        )
+                                        .ymd(
+                                                saved.getYmd()
+                                        )
+                                        .hour(
+                                                saved.getHour()
+                                        )
+                                        .build()
+                        );
+
+
+        risk.update(
+                saved.getTotalVolume()
+                        .doubleValue(),
+                average,
+                riskScore,
+                status,
+                aiResponse.getAnomaly(),
+                aiResponse.getAiScore(),
+                aiResponse.getStatus()
+        );
+
+        trafficRiskRepository.save(
+                risk
+        );
+
+        // 일정 수준 이상으로 위험도가 높아진다면 ? 이벤트로 저장 .
+        if (!status.equals(Status.NORMAL)) {
+            LocalDateTime targetTime =
+                    risk.getYmd().atTime(risk.getHour(), 0);
+
+            LocalDateTime startTime =
+                    targetTime.minusHours(1);
+
+            LocalDateTime endTime =
+                    targetTime.plusHours(1);
+
+            TrafficSpot spot = trafficSpotRepository.findBySpotNum(saved.getSpotNum())
+                    .orElseThrow();
+
+
+            String keyword =
+                    extractRoadKeyword(
+                            spot.getSpotName()
+                    );
+
+            // 시작시간 ~ 끝 시간 사이에 도로명이 속해있는 incident 데이터 갖고 오기
+            List<TrafficIncident> incidents =
+                    trafficIncidentRepository.findMatchedIncidents(
+                            startTime,
+                            endTime,
+                            keyword
+                    );
+
+            String message =
+                    buildEventMessage(
+                            riskScore,
+                            incidents,
+                            aiResponse.getAnomaly()
+                    );
+
+            TrafficEvent trafficEvent =
+                    trafficEventRepository
+                            .findLatestBySpotAndHourAndDate(
+                                    saved.getSpotNum(),
+                                    saved.getHour(),
+                                    saved.getYmd().atStartOfDay(),
+                                    saved.getYmd().plusDays(1).atStartOfDay()
+                            )
+                            .orElseGet(() ->
+                                    TrafficEvent.create(
+                                            saved.getSpotNum(),
+                                            saved.getHour(),
+                                            riskScore,
+                                            message,
+                                            status
+                                    )
+                            );
+
+            trafficEvent.update(
+                    riskScore,
+                    message,
+                    status
+            );
+            trafficEventRepository.save(trafficEvent);
+
+            TrafficAlertDto alert =
+                    TrafficAlertDto.builder()
+                            .spotNum(
+                                    trafficEvent.getSpotNum()
+                            )
+                            .hour(
+                                    trafficEvent.getHour()
+                            )
+                            .riskScore(
+                                    trafficEvent.getRiskRate()
+                            )
+                            .status(
+                                    trafficEvent.getStatus()
+                                            .name()
+                            )
+                            .message(
+                                    trafficEvent.getMessage()
+                            )
+                            .build();
+
+            messagingTemplate.convertAndSend(
+                    "/topic/traffic-alerts",
+                    alert
+            );
+        }
+    }
+
+    public List<TrafficEventDto.Response> getEventsInfo() {
+        return trafficEventRepository.findAll()
+                .stream()
+                .map(
+                        TrafficEventDto.Response::from
+                )
+                .toList();
+    }
+
+    public List<TrafficDatasetDto.Response> getDataset() {
+        return trafficVolumeRepository
+                .findAll()
+                .stream()
+                .map(
+                        TrafficDatasetDto.Response::from
+                )
+                .toList();
+    }
+
+    private AiPredictResponse requestAiPrediction(TrafficVolume saved) {
+        AiPredictRequest request =
+                AiPredictRequest.builder()
+                        .hour(saved.getHour())
+                        .inVolume(saved.getInVolume())
+                        .outVolume(saved.getOutVolume())
+                        .totalVolume(saved.getTotalVolume())
+                        .dayOfWeek(
+                                saved.getYmd()
+                                        .getDayOfWeek()
+                                        .getValue()
+                        )
+                        .build();
+
+        return restClient.post()
+                .uri("http://localhost:8000/predict")
+                .body(request)
+                .retrieve()
+                .body(AiPredictResponse.class);
+    }
+
+    // 실시간 돌발 교통 정보 갖고 오는 함수 (5분마다)
+    @Scheduled(cron = "0 */5 * * * *")
+    public void collectIncidentInfo() {
+        log.info("실시간 돌발 교통 정보 수집 시작");
+
+        try {
+            IncidentDto.Response response = restClient.get()
+                    .uri("/{key}/xml/AccInfo/1/100",
+                            apiConfig.getCity().getServiceKey())
+                    .retrieve()
+                    .body(IncidentDto.Response.class);
+
+            if (response == null || response.getRows() == null) {
+                log.warn("돌발 정보 없음");
+                return ;
+            }
+
+            response.getRows().forEach(row -> {
+                try {
+                    LocalDateTime occurTime =
+                            parseDateTime(
+                                    row.getOccurDate(),
+                                    row.getOccurTime()
+                            );
+
+                    LocalDateTime expectedClearTime =
+                            parseDateTime(
+                                    row.getExpectedClearDate(),
+                                    row.getExpectedClearTime()
+                            );
+
+                    TrafficIncident incident =
+                            trafficIncidentRepository
+                                    .findByAccId(row.getAccId())
+                                    .orElse(
+                                            TrafficIncident.create(
+                                                    row.getAccId(),
+                                                    occurTime,
+                                                    expectedClearTime,
+                                                    row.getAccType(),
+                                                    row.getAccDType(),
+                                                    row.getLinkId(),
+                                                    row.getGrs80tmX(),
+                                                    row.getGrs80tmY(),
+                                                    row.getAccInfo()
+                                            )
+                                    );
+                    trafficIncidentRepository.save(
+                            incident
+                    );
+                } catch (Exception e) {
+                    log.warn(
+                            "돌발 정보 저장 실패/스킵: accId={}, date={}, time={}, reason={}",
+                            row.getAccId(),
+                            row.getOccurDate(),
+                            row.getOccurTime(),
+                            e.getMessage()
+                    );
+                }
+            });
+
+            log.info("실시간 돌발 교통 정보 수집 완료");
+
+            log.info("돌발 교통 정보 업데이트");
+            updateEventIncidents();
+        } catch (Exception e) {
+            log.error("돌발 교통 정보 수집 실패", e);
+        }
+    }
+
+    private void updateEventIncidents() {
+        LocalDateTime now = LocalDateTime.now();
+
+        // 최근 1시간 이벤트
+        List<TrafficEvent> events =
+                trafficEventRepository
+                        .findRecentEvents(
+                                now.minusHours(1)
+                                );
+
+        for (TrafficEvent event : events) {
+            TrafficSpot spot =
+                    trafficSpotRepository
+                            .findBySpotNum(
+                                    event.getSpotNum()
+                            )
+                            .orElse(null);
+
+            if (spot == null) continue;
+
+            String keyword =
+                    extractRoadKeyword(
+                            spot.getSpotName()
+                    );
+
+            LocalDateTime target =
+                    now.withHour(
+                                    event.getHour()
+                            )
+                            .withMinute(0);
+
+            List<TrafficIncident> incidents =
+                    trafficIncidentRepository
+                                    .findMatchedIncidents(
+                                            target.minusHours(1),
+                                            target.plusHours(1),
+                                            keyword
+                                    );
+
+            if (incidents.isEmpty()) continue;
+
+            String message =
+                    buildEventMessage(
+                            event.getRiskRate(),
+                            incidents,
+                            false
+                    );
+
+            event.updateMessage(
+                    message
+            );
+            trafficEventRepository.save(
+                    event
+            );
+        }
+    }
+
+    private String buildEventMessage(
+            Double riskScore,
+            List<TrafficIncident> incidents,
+            Boolean aiAnomaly
+    ) {
+        StringBuilder message =
+                new StringBuilder(
+                        "위험 : " + riskScore
+                );
+
+        if (!incidents.isEmpty()) {
+            message.append("\n원인 추정:");
+
+            incidents.forEach(
+                    incident ->
+                            message.append("\n- ")
+                                    .append(incident.getAccType())
+                                    .append(" : ")
+                                    .append(incident.getAccInfo())
+            );
+
+            return message.toString();
+        }
+
+        if (Boolean.TRUE.equals(aiAnomaly)) {
+            message.append(
+                    "\n원인 미확인 (AI 이상 패턴 감지)"
+            );
+        } else {
+            message.append(
+                    "\n원인 미확인 (교통량 위험 증가)"
+            );
+        }
+
+        return message.toString();
+    }
+
+    private String extractRoadKeyword(String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            return "";
+        }
+
+        int idx =
+                keyword.indexOf("(");
+
+        return idx == -1
+                ? keyword.trim()
+                : keyword.substring(
+                0,
+                idx
+        ).trim();
+    }
+
+
+    private LocalDateTime parseDateTime(
+            String date,
+            String time
+    ) {
+        String d = date.trim();
+        String t = time.trim();
+
+        // 1425 -> 142500
+        if (t.length() == 4) {
+            t = t + "00";
+        }
+
+        // 925 -> 092500
+        if (t.length() == 3) {
+            t = "0" + t + "00";
+        }
+
+        // 091300 -> 그대로
+        if (t.length() == 6) {
+            // 그대로 사용
+        }
+
+        if (t.length() != 6) {
+            throw new RuntimeException("지원하지 않는 시간 형식: " + time);
+        }
+
+        return LocalDateTime.parse(
+                d + t,
+                DateTimeFormatter.ofPattern("yyyyMMddHHmmss")
+        );
     }
 
 

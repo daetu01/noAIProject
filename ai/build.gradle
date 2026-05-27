@@ -45,6 +45,9 @@ dependencies {
 
 	// env 인식
 	implementation 'io.github.cdimascio:dotenv-java:3.0.0'
+
+	// websocket 설정
+	implementation 'org.springframework.boot:spring-boot-starter-websocket'
 }
 
 tasks.named('test') {

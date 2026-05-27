@@ -40,6 +40,10 @@ export interface TrafficDetail {
   riskScore: number
   status: TrafficStatus
   todayVolumes: { hour: number; totalVolume: number }[]
+  aiAnomaly: boolean | null
+  aiScore: number | null
+  aiStatus: string | null
+  message: string | null
 }
 
 function toYmd(date: Date): string {
@@ -96,15 +100,16 @@ export const cityService = {
   },
 
   // 특정 지점 상세 (당일 시간별 교통량 포함)
-  getDetail(spotNum: string, ymd?: string): Promise<TrafficDetail> {
+  getDetail(spotNum: string, ymd?: string, hour?: number): Promise<TrafficDetail> {
     const now = new Date()
     return client
       .get<TrafficDetail>(`/api/traffic/details/${spotNum}`, {
-        params: { ymd: ymd ?? toYmd(now) }
+        params: { ymd: ymd ?? toYmd(now), hour: hour ?? toHour(now) }
       })
       .then(res => ({
         ...res.data,
         riskScore: Number(res.data.riskScore),
+        aiScore: res.data.aiScore != null ? Number(res.data.aiScore) : null,
         todayVolumes: res.data.todayVolumes.map(v => ({ ...v, totalVolume: Number(v.totalVolume) })),
       }))
   },

@@ -2,6 +2,21 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { cityService, type TrafficRiskAll, type TrafficDetail } from '@/api/cityService'
 import TrafficMap from '@/components/TrafficMap.vue'
+import { useTrafficAlerts } from '@/composables/useTrafficAlerts'
+
+const {
+  alerts, unread, toasts, connected,
+  connect, markRead, dismissToast,
+  statusLabel: alertStatusLabel,
+  statusColor: alertStatusColor,
+} = useTrafficAlerts()
+
+const alertPanelOpen = ref(false)
+
+function toggleAlertPanel() {
+  alertPanelOpen.value = !alertPanelOpen.value
+  if (alertPanelOpen.value) markRead()
+}
 
 const activeTab = ref<'traffic' | 'air' | 'weather' | 'population' | 'cctv'>('traffic')
 const now = ref('')
@@ -28,12 +43,30 @@ function setTab(key: string) {
   activeTab.value = key as typeof activeTab.value
 }
 
-async function loadTraffic() {
+function defaultHour(): number {
+  const h = new Date().getHours()
+  return h === 0 ? 23 : h - 1
+}
+
+const selectedHour = ref(defaultHour())
+const isCurrentHour = computed(() => selectedHour.value === defaultHour())
+
+async function loadTraffic(hour?: number) {
   trafficLoading.value = true
   trafficError.value = ''
-  try { trafficRisks.value = (await cityService.getAllRisks()) ?? [] }
+  try { trafficRisks.value = (await cityService.getAllRisks(undefined, hour ?? selectedHour.value)) ?? [] }
   catch { trafficError.value = '교통 데이터를 불러오지 못했습니다.' }
   finally { trafficLoading.value = false }
+}
+
+async function selectHour(h: number) {
+  selectedHour.value = h
+  await loadTraffic(h)
+}
+
+async function goToNow() {
+  selectedHour.value = defaultHour()
+  await loadTraffic()
 }
 
 // detail 패널
@@ -45,7 +78,7 @@ async function openDetail(spotNum: string) {
   detailOpen.value = true
   detailLoading.value = true
   detail.value = null
-  try { detail.value = await cityService.getDetail(spotNum) }
+  try { detail.value = await cityService.getDetail(spotNum, undefined, selectedHour.value) }
   catch { detail.value = null }
   finally { detailLoading.value = false }
 }
@@ -122,7 +155,7 @@ const cctvList = [
   { id: 'CAM-008', location: '이태원로 · 한남동', status: '정상', type: '방범', fps: 30 },
 ]
 
-onMounted(() => { updateClock(); timer = setInterval(updateClock, 1000); loadTraffic() })
+onMounted(() => { updateClock(); timer = setInterval(updateClock, 1000); loadTraffic(); connect() })
 onUnmounted(() => clearInterval(timer))
 </script>
 
@@ -142,12 +175,88 @@ onUnmounted(() => clearInterval(timer))
       </div>
       <div class="dash-header-right">
         <div class="status-dot-row">
-          <span class="status-dot green" />
-          <span class="status-label">LIVE</span>
+          <span class="status-dot" :class="connected ? 'green' : 'red'" />
+          <span class="status-label" :style="{ color: connected ? '#2ED573' : '#FF4757' }">
+            {{ connected ? 'LIVE' : 'OFF' }}
+          </span>
         </div>
+
+        <!-- 알림 벨 -->
+        <button class="alert-bell" @click="toggleAlertPanel">
+          <v-icon size="18" :color="unread > 0 ? '#FFA502' : '#4A7AB5'">
+            {{ unread > 0 ? 'mdi-bell-ring' : 'mdi-bell-outline' }}
+          </v-icon>
+          <span v-if="unread > 0" class="bell-badge">{{ unread > 99 ? '99+' : unread }}</span>
+        </button>
+
         <p class="dash-clock">{{ now }}</p>
       </div>
     </header>
+
+    <!-- 알림 패널 드롭다운 -->
+    <transition name="fade-down">
+      <div v-if="alertPanelOpen" class="alert-panel-overlay" @click.self="alertPanelOpen = false">
+        <div class="alert-panel">
+          <div class="alert-panel-header">
+            <p class="alert-panel-title">
+              <v-icon size="14" color="#FFA502" class="mr-1">mdi-bell-ring</v-icon>
+              실시간 교통 알람
+            </p>
+            <button class="alert-panel-close" @click="alertPanelOpen = false">
+              <v-icon size="16" color="#4A7AB5">mdi-close</v-icon>
+            </button>
+          </div>
+          <div v-if="alerts.length === 0" class="alert-empty">수신된 알람 없음</div>
+          <div v-else class="alert-list">
+            <div v-for="(a, i) in alerts" :key="i" class="alert-item">
+              <div class="alert-item-left">
+                <span class="alert-dot" :style="{ background: alertStatusColor(a.status) }" />
+              </div>
+              <div class="alert-item-body">
+                <div class="alert-item-top">
+                  <span class="alert-spot">{{ a.spotNum }}</span>
+                  <span class="alert-status-badge" :style="{ color: alertStatusColor(a.status), background: alertStatusColor(a.status) + '22' }">
+                    {{ alertStatusLabel(a.status) }}
+                  </span>
+                  <span class="alert-time">{{ a.receivedAt.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) }}</span>
+                </div>
+                <p class="alert-msg">{{ a.message }}</p>
+                <p class="alert-score">위험도 {{ a.riskScore.toFixed(1) }}점 · {{ a.hour }}시</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </transition>
+
+    <!-- 토스트 알람 -->
+    <div class="toast-stack">
+      <transition-group name="toast">
+        <div
+          v-for="(t, i) in toasts" :key="i"
+          class="toast-item"
+          :style="{ borderColor: alertStatusColor(t.status) + '88' }"
+        >
+          <div class="toast-bar" :style="{ background: alertStatusColor(t.status) }" />
+          <div class="toast-body">
+            <div class="toast-top">
+              <span class="toast-icon">
+                <v-icon size="14" :color="alertStatusColor(t.status)">mdi-alert-circle</v-icon>
+              </span>
+              <span class="toast-spot">{{ t.spotNum }}</span>
+              <span class="toast-badge" :style="{ color: alertStatusColor(t.status), background: alertStatusColor(t.status) + '22' }">
+                {{ alertStatusLabel(t.status) }}
+              </span>
+              <button class="toast-close" @click="dismissToast(t)">
+                <v-icon size="12" color="#4A7AB5">mdi-close</v-icon>
+              </button>
+            </div>
+            <p class="toast-msg">{{ t.message.split('\n')[0] }}</p>
+            <p class="toast-score">위험도 {{ t.riskScore.toFixed(1) }}점 · {{ t.hour }}시</p>
+          </div>
+        </div>
+      </transition-group>
+    </div>
 
     <!-- 상단 통계 카드 -->
     <div class="stat-row">
@@ -185,10 +294,33 @@ onUnmounted(() => clearInterval(timer))
       <div class="panel col-3">
         <div class="panel-title-row">
           <p class="panel-title"><v-icon size="14" color="#00C8FF" class="mr-1">mdi-map-marker-radius</v-icon>교통 지점 위험도 현황</p>
-          <button class="refresh-btn" :disabled="trafficLoading" @click="loadTraffic">
-            <v-icon size="14" :class="{ spinning: trafficLoading }">mdi-refresh</v-icon>
-            새로고침
-          </button>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button v-if="!isCurrentHour" class="refresh-btn" @click="goToNow">
+              <v-icon size="14">mdi-clock-outline</v-icon>
+              현재 시각
+            </button>
+            <button class="refresh-btn" :disabled="trafficLoading" @click="() => loadTraffic()">
+              <v-icon size="14" :class="{ spinning: trafficLoading }">mdi-refresh</v-icon>
+              새로고침
+            </button>
+          </div>
+        </div>
+
+        <!-- 시간 선택 슬라이더 -->
+        <div class="hour-selector">
+          <span class="hour-label">
+            <v-icon size="13" color="#00C8FF">mdi-clock</v-icon>
+            {{ selectedHour }}시 데이터
+            <span v-if="isCurrentHour" class="hour-now-badge">NOW</span>
+          </span>
+          <div class="hour-pills">
+            <button
+              v-for="h in defaultHour() + 1" :key="h - 1"
+              class="hour-pill"
+              :class="{ active: selectedHour === h - 1 }"
+              @click="selectHour(h - 1)"
+            >{{ h - 1 }}</button>
+          </div>
         </div>
 
         <div v-if="trafficError" class="data-error">{{ trafficError }}</div>
@@ -270,9 +402,51 @@ onUnmounted(() => clearInterval(timer))
               </div>
             </div>
 
+            <!-- 위험 원인 메시지 -->
+            <div v-if="detail.message" class="event-message-box" :style="{ borderColor: statusColor(detail.status) + '66' }">
+              <div class="event-message-header">
+                <v-icon size="13" :color="statusColor(detail.status)">mdi-alert-circle-outline</v-icon>
+                <span :style="{ color: statusColor(detail.status) }">위험 분석 리포트</span>
+              </div>
+              <p class="event-message-body">{{ detail.message }}</p>
+            </div>
+
+            <!-- AI 분석 결과 -->
+            <div v-if="detail.aiScore != null" class="ai-section">
+              <p class="detail-section-title">
+                <v-icon size="12" color="#A29BFE" class="mr-1">mdi-brain</v-icon>
+                AI 이상 탐지 (Isolation Forest)
+              </p>
+              <div class="ai-result-row">
+                <!-- 이상 여부 -->
+                <div class="ai-result-box" :class="detail.aiAnomaly ? 'ai-anomaly' : 'ai-normal'">
+                  <v-icon size="20">{{ detail.aiAnomaly ? 'mdi-alert-decagram' : 'mdi-check-circle' }}</v-icon>
+                  <p class="ai-result-label">{{ detail.aiAnomaly ? '이상 패턴 감지' : '정상 패턴' }}</p>
+                  <p class="ai-result-sub">{{ detail.aiStatus ?? '-' }}</p>
+                </div>
+                <!-- AI Score 게이지 -->
+                <div class="ai-score-box">
+                  <p class="detail-risk-label">AI Score</p>
+                  <p class="ai-score-val" :style="{ color: detail.aiAnomaly ? '#FF4757' : '#2ED573' }">
+                    {{ detail.aiScore.toFixed(4) }}
+                  </p>
+                  <p class="ai-score-desc">{{ detail.aiAnomaly ? '음수일수록 이상도 높음' : '양수 = 정상 범위' }}</p>
+                  <div class="ai-score-bar-bg">
+                    <div class="ai-score-bar-fill" :style="{
+                      width: Math.min(Math.abs(detail.aiScore) * 200, 100) + '%',
+                      background: detail.aiAnomaly ? '#FF4757' : '#2ED573'
+                    }" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- 시간별 교통량 바 차트 -->
             <div class="detail-chart-wrap">
-              <p class="detail-section-title">당일 시간별 교통량</p>
+              <p class="detail-section-title">
+                <v-icon size="12" color="#00C8FF" class="mr-1">mdi-chart-bar</v-icon>
+                당일 시간별 교통량
+              </p>
               <div class="detail-chart">
                 <div
                   v-for="v in detail.todayVolumes" :key="v.hour"
@@ -590,13 +764,114 @@ onUnmounted(() => clearInterval(timer))
 .chip-yellow { background: rgba(255,165,2,0.15); color: #FFA502; }
 .chip-red { background: rgba(255,71,87,0.15); color: #FF4757; }
 
+/* 알림 벨 */
+.alert-bell {
+  position: relative; background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08); border-radius: 8px;
+  width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: background 0.15s;
+}
+.alert-bell:hover { background: rgba(255,165,2,0.1); border-color: rgba(255,165,2,0.3); }
+.bell-badge {
+  position: absolute; top: -5px; right: -5px;
+  background: #FF4757; color: #fff;
+  font-size: 9px; font-weight: 800; min-width: 16px; height: 16px;
+  border-radius: 8px; display: flex; align-items: center; justify-content: center;
+  padding: 0 3px; border: 1.5px solid #060D1A;
+}
+
+/* 알림 패널 */
+.alert-panel-overlay {
+  position: fixed; top: 56px; left: 0; right: 0; bottom: 0;
+  z-index: 900; display: flex; justify-content: flex-end; align-items: flex-start;
+}
+.alert-panel {
+  width: 360px; max-height: 70vh; margin-top: 8px; margin-right: 16px;
+  background: #0A1628; border: 1px solid rgba(0,200,255,0.2);
+  border-radius: 12px; overflow: hidden; display: flex; flex-direction: column;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+}
+.alert-panel-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; border-bottom: 1px solid rgba(0,200,255,0.1); flex-shrink: 0;
+}
+.alert-panel-title { font-size: 11px; font-weight: 700; color: #4A7AB5; letter-spacing: 1px; display: flex; align-items: center; }
+.alert-panel-close { background: none; border: none; cursor: pointer; display: flex; align-items: center; }
+.alert-empty { padding: 32px 16px; text-align: center; font-size: 12px; color: #2D4A6A; }
+.alert-list { overflow-y: auto; flex: 1; }
+.alert-item { display: flex; gap: 10px; padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.03); transition: background 0.1s; }
+.alert-item:hover { background: rgba(0,200,255,0.03); }
+.alert-item-left { padding-top: 5px; }
+.alert-dot { display: block; width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.alert-item-body { flex: 1; min-width: 0; }
+.alert-item-top { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.alert-spot { font-size: 12px; font-weight: 700; color: #C8D6E8; }
+.alert-status-badge { font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 4px; }
+.alert-time { font-size: 10px; color: #2D4A6A; margin-left: auto; font-family: 'Courier New', monospace; }
+.alert-msg { font-size: 11px; color: #8AABCC; white-space: pre-line; line-height: 1.5; margin-bottom: 3px; }
+.alert-score { font-size: 10px; color: #2D4A6A; font-family: 'Courier New', monospace; }
+
+/* 토스트 */
+.toast-stack {
+  position: fixed; top: 70px; right: 16px; z-index: 2000;
+  display: flex; flex-direction: column; gap: 8px; pointer-events: none;
+}
+.toast-item {
+  width: 300px; background: #0A1628;
+  border: 1px solid; border-radius: 10px; overflow: hidden;
+  display: flex; pointer-events: all;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+.toast-bar { width: 3px; flex-shrink: 0; }
+.toast-body { flex: 1; padding: 10px 12px; }
+.toast-top { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.toast-spot { font-size: 12px; font-weight: 700; color: #C8D6E8; flex: 1; }
+.toast-badge { font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 4px; }
+.toast-close { background: none; border: none; cursor: pointer; display: flex; align-items: center; margin-left: auto; }
+.toast-msg { font-size: 11px; color: #8AABCC; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.toast-score { font-size: 10px; color: #2D4A6A; font-family: 'Courier New', monospace; }
+
+/* 애니메이션 */
+.fade-down-enter-active, .fade-down-leave-active { transition: opacity 0.2s, transform 0.2s; }
+.fade-down-enter-from, .fade-down-leave-to { opacity: 0; transform: translateY(-8px); }
+.toast-enter-active, .toast-leave-active { transition: opacity 0.3s, transform 0.3s; }
+.toast-enter-from { opacity: 0; transform: translateX(100%); }
+.toast-leave-to { opacity: 0; transform: translateX(100%); }
+
+/* 시간 선택 */
+.hour-selector { margin-bottom: 14px; }
+.hour-label {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 700; color: #4A7AB5;
+  margin-bottom: 10px;
+}
+.hour-now-badge {
+  font-size: 9px; font-weight: 800; color: #00C8FF;
+  background: rgba(0,200,255,0.12); border: 1px solid rgba(0,200,255,0.3);
+  border-radius: 4px; padding: 1px 6px; letter-spacing: 1px;
+}
+.hour-pills {
+  display: flex; flex-wrap: wrap; gap: 4px;
+}
+.hour-pill {
+  width: 34px; height: 26px;
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 5px; color: #4A7AB5; font-size: 11px; font-weight: 600;
+  cursor: pointer; transition: all 0.12s;
+}
+.hour-pill:hover { background: rgba(0,200,255,0.08); color: #A0C4E8; border-color: rgba(0,200,255,0.2); }
+.hour-pill.active {
+  background: rgba(0,200,255,0.15); border-color: rgba(0,200,255,0.5);
+  color: #00C8FF; font-weight: 800;
+}
+
 /* 카드 클릭 */
 .zone-card.clickable { cursor: pointer; transition: background 0.15s, transform 0.1s; }
 .zone-card.clickable:hover { background: rgba(0,200,255,0.06); transform: translateY(-1px); }
 
 /* detail 오버레이 */
 .detail-overlay {
-  position: fixed; inset: 0; z-index: 1000;
+  position: fixed; top: 56px; left: 0; right: 0; bottom: 0; z-index: 1000;
   background: rgba(0,0,0,0.5);
   backdrop-filter: blur(4px);
   display: flex; justify-content: flex-end;
@@ -656,6 +931,44 @@ onUnmounted(() => clearInterval(timer))
 .chart-bar { width: 100%; border-radius: 3px 3px 0 0; transition: height 0.4s; min-height: 2px; }
 .chart-hour { font-size: 8px; color: #2D4A6A; margin-top: 4px; }
 .chart-vol { font-size: 7px; color: #2D4A6A; }
+
+/* 위험 원인 메시지 */
+.event-message-box {
+  border: 1px solid; border-radius: 10px;
+  padding: 14px 16px;
+  background: rgba(255,255,255,0.03);
+}
+.event-message-header {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.event-message-body {
+  font-size: 12px; color: #8AABCC; line-height: 1.8;
+  white-space: pre-line;
+}
+
+/* AI 분석 섹션 */
+.ai-section { display: flex; flex-direction: column; gap: 10px; }
+.ai-result-row { display: grid; grid-template-columns: 1fr 1.4fr; gap: 10px; }
+
+.ai-result-box {
+  border: 1px solid; border-radius: 10px; padding: 14px 12px;
+  display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center;
+}
+.ai-anomaly { border-color: rgba(255,71,87,0.4); background: rgba(255,71,87,0.08); color: #FF4757; }
+.ai-normal  { border-color: rgba(46,213,115,0.4); background: rgba(46,213,115,0.08); color: #2ED573; }
+.ai-result-label { font-size: 13px; font-weight: 800; }
+.ai-result-sub { font-size: 10px; opacity: 0.7; }
+
+.ai-score-box {
+  border: 1px solid rgba(162,155,254,0.25); background: rgba(162,155,254,0.06);
+  border-radius: 10px; padding: 14px 14px;
+}
+.ai-score-val { font-size: 22px; font-weight: 900; font-family: 'Courier New', monospace; margin: 4px 0; }
+.ai-score-desc { font-size: 10px; color: #4A7AB5; margin-bottom: 8px; }
+.ai-score-bar-bg { height: 4px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden; }
+.ai-score-bar-fill { height: 100%; border-radius: 2px; transition: width 0.5s; }
 
 /* 슬라이드 애니메이션 */
 .slide-panel-enter-active, .slide-panel-leave-active { transition: opacity 0.25s, transform 0.25s; }
