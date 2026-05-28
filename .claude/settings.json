@@ -4,7 +4,8 @@
       "Bash(Get-ChildItem -Path 'C:\\\\Users\\\\SSAFY\\\\Desktop\\\\ssafy\\\\noAI')",
       "Bash(Select-Object Name, PSIsContainer)",
       "Bash(npx tsc *)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\SSAFY\\\\Desktop\\\\ssafy\\\\noAI\\\\no-\\\\src\" -Recurse -Filter \"*game*\")"
     ]
   }
 }

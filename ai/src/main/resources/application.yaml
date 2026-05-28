@@ -41,3 +41,7 @@ api:
     key: ${WOW_API_KEY}
     base-url: ${WOW_BASE_URL}
 
+  weather:
+    key: ${WEATHER_API_KEY}
+    base-url: ${WEATHER_BASE_URL}
+

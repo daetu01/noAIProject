@@ -7,6 +7,25 @@
         <p class="s-sub">Playable experiences built from first principles — design, code, and feel as one.</p>
       </div>
 
+      <!-- Game API 서비스 배너 -->
+      <RouterLink to="/games" class="game-api-banner reveal">
+        <div class="api-banner-left">
+          <div class="api-banner-icon">🎮</div>
+          <div>
+            <p class="api-banner-label">LIVE SERVICE</p>
+            <p class="api-banner-title">Game API Dashboard</p>
+            <p class="api-banner-desc">메이플스토리 캐릭터 검색 · 실시간 스탯 조회</p>
+          </div>
+        </div>
+        <div class="api-banner-right">
+          <span class="api-banner-badge">
+            <span class="api-live-dot" />
+            NEXON API
+          </span>
+          <span class="api-banner-arrow">→</span>
+        </div>
+      </RouterLink>
+
       <div class="games-grid stagger">
         <div
           v-for="g in games" :key="g.id"
@@ -126,6 +145,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import { games } from '@/data'
 
 type Game = typeof games[0]
@@ -277,6 +297,66 @@ function open(g: Game) { active.value = g }
 .gm-stack h4 { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-3); margin-bottom: 10px; }
 .gm-techs { display: flex; flex-wrap: wrap; gap: 8px; }
 
+/* ─ Game API Banner ─ */
+.game-api-banner {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20px 28px;
+  background: var(--bg-3);
+  border: 1px solid rgba(167,139,250,.2);
+  border-radius: var(--r);
+  margin-bottom: 32px;
+  text-decoration: none; color: inherit;
+  transition: all .3s cubic-bezier(.4,0,.2,1);
+  position: relative; overflow: hidden;
+}
+.game-api-banner::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(91,156,246,.04) 0%, rgba(167,139,250,.04) 100%);
+  opacity: 0; transition: opacity .3s ease;
+}
+.game-api-banner:hover {
+  border-color: rgba(167,139,250,.45);
+  transform: translateY(-3px);
+  box-shadow: 0 16px 48px rgba(0,0,0,.4), 0 0 40px rgba(167,139,250,.07);
+}
+.game-api-banner:hover::before { opacity: 1; }
+
+.api-banner-left { display: flex; align-items: center; gap: 18px; }
+.api-banner-icon { font-size: 32px; filter: drop-shadow(0 0 12px rgba(167,139,250,.6)); }
+.api-banner-label {
+  font-size: 9px; font-weight: 700; color: #a78bfa;
+  letter-spacing: .2em; text-transform: uppercase; margin-bottom: 4px;
+}
+.api-banner-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 3px;
+}
+.api-banner-desc { font-size: 12px; color: var(--text-3); }
+
+.api-banner-right { display: flex; align-items: center; gap: 16px; }
+.api-banner-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 12px;
+  background: rgba(52,211,153,.1); border: 1px solid rgba(52,211,153,.25);
+  border-radius: 100px; font-size: 10px; font-weight: 700;
+  color: #34d399; letter-spacing: .06em;
+}
+.api-live-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: #34d399; box-shadow: 0 0 5px #34d399;
+  animation: pulse 2s ease-in-out infinite;
+}
+.api-banner-arrow {
+  font-size: 18px; color: var(--text-3);
+  transition: transform .2s ease, color .2s ease;
+}
+.game-api-banner:hover .api-banner-arrow { transform: translateX(4px); color: #a78bfa; }
+
 @media (max-width: 900px) { .games-grid { grid-template-columns: repeat(2,1fr); } }
-@media (max-width: 560px) { .games-grid { grid-template-columns: 1fr; } }
+@media (max-width: 560px) {
+  .games-grid { grid-template-columns: 1fr; }
+  .game-api-banner { flex-direction: column; align-items: flex-start; gap: 16px; }
+  .api-banner-right { width: 100%; justify-content: space-between; }
+}
 </style>

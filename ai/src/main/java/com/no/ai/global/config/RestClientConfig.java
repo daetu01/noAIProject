@@ -11,16 +11,37 @@ import java.time.Duration;
 @Configuration
 public class RestClientConfig {
     @Bean
-    public RestClient restClient() {
+    public RestClient topisRestClient() {
 
-        // request Timeout 코드 10초 기준.
         JdkClientHttpRequestFactory factory =
                 new JdkClientHttpRequestFactory();
 
-        factory.setReadTimeout(Duration.ofSeconds(30));
+        factory.setReadTimeout(
+                Duration.ofSeconds(30)
+        );
 
         return RestClient.builder()
-                .baseUrl("http://openapi.seoul.go.kr:8088")
+                .baseUrl(
+                        "http://openapi.seoul.go.kr:8088"
+                )
+                .requestFactory(factory)
+                .build();
+    }
+
+    @Bean
+    public RestClient weatherRestClient() {
+
+        JdkClientHttpRequestFactory factory =
+                new JdkClientHttpRequestFactory();
+
+        factory.setReadTimeout(
+                Duration.ofSeconds(30)
+        );
+
+        return RestClient.builder()
+                .baseUrl(
+                        "https://apihub.kma.go.kr"
+                )
                 .requestFactory(factory)
                 .build();
     }

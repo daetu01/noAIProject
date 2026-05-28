@@ -5,7 +5,11 @@
       "WebFetch(domain:the-edit.co.kr)",
       "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\SSAFY\\\\Desktop\\\\ssafy\\\\noAI\\\\ai\" -Recurse -Directory)",
       "Bash(Select-Object FullName)",
-      "Bash(Test-Path \"c:\\\\Users\\\\SSAFY\\\\Desktop\\\\ssafy\\\\noAI\\\\no-\\\\src\\\\components\\\\TrafficMap.vue\")"
+      "Bash(Test-Path \"c:\\\\Users\\\\SSAFY\\\\Desktop\\\\ssafy\\\\noAI\\\\no-\\\\src\\\\components\\\\TrafficMap.vue\")",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\SSAFY\\\\Desktop\\\\ssafy\\\\noAI\" -Directory)",
+      "Bash(curl -s \"http://localhost:8080/api/weather/daily?ymd=20260527\")",
+      "Bash(curl -s \"http://localhost:8080/api/weather/daily/short\")",
+      "Bash(curl -s -v \"http://localhost:8080/api/weather/daily?ymd=20260527\")"
     ]
   }
 }

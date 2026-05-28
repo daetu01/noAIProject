@@ -58,6 +58,27 @@ function toHour(date: Date): number {
   return h === 0 ? 23 : h - 1
 }
 
+export interface WeatherRow {
+  ymd: string
+  stnId: string
+  avgTemp: number | null
+  maxTemp: number | null
+  minTemp: number | null
+  morningMinTemp: number | null
+  daytimeMaxTemp: number | null
+  nightMinTemp: number | null
+}
+
+export interface ForecastItem {
+  tmFc: string
+  tmEf: string
+  temperature: number | null
+  rainProbability: number | null
+  skyCode: string | null
+  precipitationCode: number | null
+  weatherText: string | null
+}
+
 export const cityService = {
   // 특정 시간 모든 지점 교통량
   getSpotVolumes(ymd?: string, hour?: string): Promise<TrafficSpotVolume[]> {
@@ -97,6 +118,24 @@ export const cityService = {
         params: { ymd: ymd ?? toYmd(now), hour: hour ?? toHour(now) }
       })
       .then(res => (res.data ?? []).map(r => ({ ...r, riskScore: Number(r.riskScore) })))
+  },
+
+  // 오늘 일기상 (평균/최고/최저기온)
+  getDailyWeather(ymd?: string): Promise<WeatherRow> {
+    const yesterday = new Date()
+    yesterday.setDate(yesterday.getDate() - 1)
+    return client
+      .get<WeatherRow>('/api/weather/daily', {
+        params: { ymd: ymd ?? toYmd(yesterday) }
+      })
+      .then(res => res.data)
+  },
+
+  // 단기예보 목록
+  getForecastWeather(): Promise<ForecastItem[]> {
+    return client
+      .get<ForecastItem[]>('/api/weather/daily/short')
+      .then(res => res.data ?? [])
   },
 
   // 특정 지점 상세 (당일 시간별 교통량 포함)
