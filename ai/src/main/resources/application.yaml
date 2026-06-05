@@ -19,8 +19,8 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: ${SPRING_DATASOURCE_URL:jdbc:mysql://127.0.0.1:3306/noai?useSSL=false&serverTimezone=Asia/Seoul&characterEncoding=UTF-8&allowPublicKeyRetrieval=true}
     username: ${SPRING_DATASOURCE_USERNAME:root}
-    password: ${SPRING_DATASOURCE_PASSWORD:ssafy1234}
-    #password: root1234
+#    password: ${SPRING_DATASOURCE_PASSWORD:ssafy1234}
+    password: root1234
 jwt:
   expiration_time: ${JWT_EXPIRATION_TIME:864000000}
   secret: ${JWT_SECRET:RElBUllfQU5EX0NPTU1VTklUWV9QUk9KRUNUX0RBV05BUllfQURNSU5fU0VDUkVUX0tFWQ==}

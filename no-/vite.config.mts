@@ -53,6 +53,7 @@ export default defineConfig({
   server: {
     port: 3000,
     proxy: {
+      '/user': 'http://localhost:8080',
       '/board': 'http://localhost:8080',
       '/market': 'http://localhost:8080',
       '/inventory': 'http://localhost:8080',
