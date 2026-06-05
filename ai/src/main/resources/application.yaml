@@ -2,6 +2,13 @@ spring:
   application:
     name: ai
 
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  cache:
+    type: redis
+
   jpa:
     open-in-view: true
     hibernate:
@@ -33,4 +40,8 @@ api:
   wow:
     key: ${WOW_API_KEY}
     base-url: ${WOW_BASE_URL}
+
+  weather:
+    key: ${WEATHER_API_KEY}
+    base-url: ${WEATHER_BASE_URL}
 

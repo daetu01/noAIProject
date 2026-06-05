@@ -12,26 +12,46 @@ public class ApiConfig {
     private final Maple maple;
     private final Wow wow;
     private final City city;
+    private final Weather weather;
 
     public ApiConfig() {
 
-        Dotenv dotenv = Dotenv.load();
+        Dotenv dotenv = Dotenv.configure()
+                .ignoreIfMissing()
+                .load();
 
         this.maple = new Maple(
-                dotenv.get("MAPLE_API_KEY"),
-                dotenv.get("MAPLE_BASE_URL")
+                getEnv(dotenv, "MAPLE_API_KEY"),
+                getEnv(dotenv, "MAPLE_BASE_URL")
         );
 
         this.wow = new Wow(
-                dotenv.get("WOW_CLIENT_ID"),
-                dotenv.get("WOW_CLIENT_SECRET"),
-                dotenv.get("WOW_BASE_URL")
+                getEnv(dotenv, "WOW_CLIENT_ID"),
+                getEnv(dotenv, "WOW_CLIENT_SECRET"),
+                getEnv(dotenv, "WOW_BASE_URL")
         );
 
         this.city = new City(
-                dotenv.get("SERVICE_KEY"),
-                dotenv.get("value2")
+                getEnv(dotenv, "SERVICE_KEY"),
+                getEnv(dotenv, "SEOUL_API_BASE_URL")
         );
+
+        this.weather = new Weather(
+                getEnv(dotenv, "WEATHER_API_KEY"),
+                getEnv(dotenv, "WEATHER_BASE_URL")
+        );
+    }
+
+    private String getEnv(
+            Dotenv dotenv,
+            String key
+    ) {
+        String value =
+                System.getenv(key);
+
+        return value != null
+                ? value
+                : dotenv.get(key);
     }
 
     @Getter
@@ -54,6 +74,13 @@ public class ApiConfig {
     public static class City {
         private String serviceKey;
         private String value2;
+    }
+
+    @Getter
+    @AllArgsConstructor
+    public static class Weather {
+        private String apikey;
+        private String baseUrl;
     }
 }
 

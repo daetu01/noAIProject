@@ -35,7 +35,7 @@ export default defineConfig({
       },
     }),
   ],
-  define: { 'process.env': {} },
+  define: { 'process.env': {}, global: {} },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('src', import.meta.url)),
@@ -58,8 +58,8 @@ export default defineConfig({
       '/market': 'http://localhost:8080',
       '/inventory': 'http://localhost:8080',
       '/maple': 'http://localhost:8080',
-      '/auth': 'http://localhost:8080',
       '/admin': 'http://localhost:8080',
+      '/api': 'http://localhost:8080',
     },
   },
 })

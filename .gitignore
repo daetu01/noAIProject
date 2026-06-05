@@ -46,3 +46,5 @@ no-/*.local
 
 # ===== TypeScript build cache =====
 no-/node_modules/.tmp/
+
+pythonAI/venv/
