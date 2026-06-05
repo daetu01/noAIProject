@@ -16,6 +16,13 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+      
+  redis:
+    image: redis:7
+    container_name: traffic-redis
+    restart: always
+    ports:
+      - "6379:6379"
 
   backend:
     build:

@@ -234,7 +234,10 @@ JWT_SECRET=change-me-base64-secret
 외부 API를 사용할 경우 백엔드 실행 환경에 아래 값도 필요합니다.
 
 ```env
-SERVICE_KEY=서울시_API_서비스키
+WEATHER_API_KEY=날씨 API 키 
+WEATHER_BASE_URL=날씨 BASE URL 
+SEOUL_API_BASE_URL=서울 API BASE URL
+SERVICE_KEY=서울 API 키 
 MAPLE_API_KEY=넥슨_메이플_API_키
 MAPLE_BASE_URL=메이플_API_BASE_URL
 WOW_API_KEY=WOW_API_KEY
