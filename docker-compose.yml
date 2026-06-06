@@ -16,7 +16,13 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-      
+  
+  fastapi:
+    build:
+      context: ./pythonAI
+    ports:
+      - "8000:8000"
+
   redis:
     image: redis:7
     container_name: traffic-redis

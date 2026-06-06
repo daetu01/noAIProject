@@ -25,6 +25,7 @@ public class Board {
     private String writer;
     private String uploadDir;
 
+
     public void update(String title, String content) {
         this.title = title;
         this.content = content;

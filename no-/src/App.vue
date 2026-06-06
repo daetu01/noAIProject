@@ -29,8 +29,10 @@ const studioRoutes = ['/', '/login', '/signup']
 const isStudio = computed(() => studioRoutes.includes(route.path))
 
 // Service app auth pages don't show nav
-const noNavRoutes = ['/login', '/signup', '/city', '/games', '/games/maple']
-const showServiceNav = computed(() => !noNavRoutes.includes(route.path))
+const noNavRoutes = ['/login', '/signup', '/city', '/games', '/board']
+const showServiceNav = computed(() =>
+  !noNavRoutes.some(r => route.path === r || route.path.startsWith(r + '/'))
+)
 </script>
 
 <style>

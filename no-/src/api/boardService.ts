@@ -41,6 +41,7 @@ export const boardService = {
     return client.delete(`/board?id=${id}`)
   },
 
- 
-
+  like(id: number): Promise<void> {
+    return client.post(`/favorite/${id}`)
+  },
 }

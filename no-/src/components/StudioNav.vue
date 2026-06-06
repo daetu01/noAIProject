@@ -10,6 +10,9 @@
           {{ link.label }}
         </a>
       </li>
+      <li class="nav-community-item">
+        <RouterLink to="/board" class="nav-community" @click="menuOpen = false">Community</RouterLink>
+      </li>
       <!-- mobile only: login inside menu -->
       <li class="mobile-login">
         <RouterLink to="/login" @click="menuOpen = false">Sign In →</RouterLink>
@@ -105,6 +108,23 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
 .nav-links a:hover::after { width: 100%; }
 
 .mobile-login { display: none; }
+
+.nav-community {
+  font-size: 13px; font-weight: 500;
+  color: var(--blue); letter-spacing: .04em;
+  padding: 4px 12px;
+  border: 1px solid rgba(91,156,246,.25);
+  border-radius: 100px;
+  background: rgba(91,156,246,.08);
+  transition: all .25s ease;
+  white-space: nowrap;
+}
+.nav-community:hover {
+  background: rgba(91,156,246,.18);
+  border-color: rgba(91,156,246,.5);
+  color: #7fb3ff;
+  transform: translateY(-1px);
+}
 
 /* ─── Login button ─────────────────────────────────────── */
 .nav-right {
