@@ -1,11 +1,13 @@
-package com.no.ai.favorite.repository;
+package com.no.ai.board.repository;
 
 import com.no.ai.board.domain.Board;
-import com.no.ai.favorite.domain.Favorite;
+import com.no.ai.board.domain.Favorite;
 import com.no.ai.user.domain.UserEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface FavortieRepository extends JpaRepository<Favorite, Long> {
+import java.util.List;
+
+public interface FavoriteRepository extends JpaRepository<Favorite, Long> {
     boolean existsByUserAndBoard(
             UserEntity user,
             Board board
@@ -15,4 +17,10 @@ public interface FavortieRepository extends JpaRepository<Favorite, Long> {
             UserEntity user,
             Board board
     );
+
+    List<Favorite> findByUser(
+            UserEntity user
+    );
+
+    int countByBoard(Board board);
 }

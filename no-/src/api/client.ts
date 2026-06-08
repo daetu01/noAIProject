@@ -19,7 +19,10 @@ client.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('token')
-      window.location.href = '/login'
+      // Redirect only if not already on login page to avoid loops
+      if (!window.location.pathname.startsWith('/login')) {
+        window.location.href = '/login?reason=session_expired'
+      }
     }
     return Promise.reject(error)
   }

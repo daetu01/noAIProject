@@ -4,6 +4,7 @@ import com.no.ai.board.domain.Board;
 import com.no.ai.board.dto.BoardDTO;
 import com.no.ai.board.dto.ImageDto;
 import com.no.ai.board.service.BoardService;
+import com.no.ai.global.security.details.CustomUserDetails;
 import com.no.ai.global.service.FileService;
 import com.no.ai.global.exception.Message;
 import com.no.ai.global.exception.StatusEnum;
@@ -13,6 +14,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -29,11 +31,11 @@ public class BoardController {
 
     // 게시글 조회
     @GetMapping
-    public ResponseEntity<Message> readBoard() {
+    public ResponseEntity<Message> readBoard(@AuthenticationPrincipal CustomUserDetails userDetails) {
         Message message = new Message();
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(new MediaType("application", "json", Charset.forName("UTF-8")));
-        List<BoardDTO.Get> boardList = boardService.read();
+        List<BoardDTO.Get> boardList = boardService.read(userDetails);
         message.setStatus(StatusEnum.OK);
         message.setMessage("성공 코드");
         message.setData(boardList);
@@ -78,8 +80,8 @@ public class BoardController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Message> getBoard(@PathVariable Long id) {
-        BoardDTO.Get board = boardService.getBoard(id);
+    public ResponseEntity<Message> getBoard(@PathVariable Long id, @AuthenticationPrincipal CustomUserDetails userDetails) {
+        BoardDTO.Get board = boardService.getBoard(id, userDetails);
 
         Message message = new Message();
         message.setStatus(StatusEnum.OK);

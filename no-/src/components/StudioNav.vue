@@ -13,17 +13,28 @@
       <li class="nav-community-item">
         <RouterLink to="/board" class="nav-community" @click="menuOpen = false">Community</RouterLink>
       </li>
-      <!-- mobile only: login inside menu -->
+      <!-- mobile only -->
       <li class="mobile-login">
-        <RouterLink to="/login" @click="menuOpen = false">Sign In →</RouterLink>
+        <RouterLink v-if="store.isLoggedIn" to="/city" @click="menuOpen = false">Go to App →</RouterLink>
+        <RouterLink v-else to="/login" @click="menuOpen = false">Sign In →</RouterLink>
       </li>
     </ul>
 
     <div class="nav-right">
-      <RouterLink to="/login" class="nav-login-btn">
-        <span class="login-dot" />
-        Sign In
-      </RouterLink>
+      <template v-if="store.isLoggedIn">
+        <span class="nav-user">{{ store.user?.nickName }}</span>
+        <RouterLink to="/city" class="nav-login-btn">
+          <span class="login-dot" />
+          Go to App
+        </RouterLink>
+        <button class="nav-logout-btn" @click="logout">Sign Out</button>
+      </template>
+      <template v-else>
+        <RouterLink to="/login" class="nav-login-btn">
+          <span class="login-dot" />
+          Sign In
+        </RouterLink>
+      </template>
 
       <button class="nav-ham" :class="{ open: menuOpen }" @click="menuOpen = !menuOpen" aria-label="menu">
         <span /><span /><span />
@@ -34,7 +45,16 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
+import { useAppStore } from '@/stores/app'
+
+const store = useAppStore()
+const router = useRouter()
+
+function logout() {
+  store.logout()
+  router.push('/login')
+}
 
 const links = [
   { id: 'hero',     label: 'Home' },
@@ -108,6 +128,17 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
 .nav-links a:hover::after { width: 100%; }
 
 .mobile-login { display: none; }
+
+.nav-user {
+  font-size: 12px; color: var(--text-3);
+}
+.nav-logout-btn {
+  font-size: 13px; color: var(--text-3);
+  background: none; border: none; cursor: pointer;
+  font-family: inherit; letter-spacing: .04em;
+  transition: color .2s ease;
+}
+.nav-logout-btn:hover { color: var(--text); }
 
 .nav-community {
   font-size: 13px; font-weight: 500;

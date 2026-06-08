@@ -54,12 +54,21 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/user': 'http://localhost:8080',
-      '/board': 'http://localhost:8080',
+      '/board': {
+        target: 'http://localhost:8080',
+        // Browser navigation (Accept: text/html) must get index.html, not be proxied.
+        // Without this, page refresh on /board sends no auth header → Spring Boot 401 → blank screen.
+        bypass(req) {
+          if (req.headers.accept?.includes('text/html')) return '/index.html'
+        },
+      },
       '/market': 'http://localhost:8080',
       '/inventory': 'http://localhost:8080',
       '/maple': 'http://localhost:8080',
       '/admin': 'http://localhost:8080',
       '/api': 'http://localhost:8080',
+      '/favorite': 'http://localhost:8080',
+      '/comment': 'http://localhost:8080',
     },
   },
 })

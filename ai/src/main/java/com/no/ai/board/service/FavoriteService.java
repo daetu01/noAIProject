@@ -1,9 +1,9 @@
-package com.no.ai.favorite.service;
+package com.no.ai.board.service;
 
 import com.no.ai.board.domain.Board;
 import com.no.ai.board.repository.BoardRepository;
-import com.no.ai.favorite.domain.Favorite;
-import com.no.ai.favorite.repository.FavortieRepository;
+import com.no.ai.board.domain.Favorite;
+import com.no.ai.board.repository.FavoriteRepository;
 import com.no.ai.user.domain.UserEntity;
 import com.no.ai.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -12,11 +12,12 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class FavoriteService {
-    private final FavortieRepository favortieRepository;
+    private final FavoriteRepository favortieRepository;
     private final UserRepository userRepository;
     private final BoardRepository boardRepository;
 
     public void favorite(Long id, String email) {
+        System.out.println("Email: " + email);
         UserEntity user = userRepository.findByEmail(email)
                 .orElseThrow();
 
@@ -32,10 +33,14 @@ public class FavoriteService {
                     .build();
 
             favortieRepository.save(favorite);
+            board.setLikedCount(board.getLikedCount() + 1);
+            boardRepository.save(board);
         } else {
             // 존재한다면 좋아요 취소
             Favorite favorite = favortieRepository.findByUserAndBoard(user,board);
             favortieRepository.delete(favorite);
+            board.setLikedCount(board.getLikedCount() - 1);
+            boardRepository.save(board);
         }
     }
 }

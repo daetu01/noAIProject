@@ -4,6 +4,10 @@ import com.no.ai.board.domain.Board;
 import com.no.ai.board.dto.BoardDTO;
 import com.no.ai.board.dto.ImageDto;
 import com.no.ai.board.repository.BoardRepository;
+import com.no.ai.board.repository.FavoriteRepository;
+import com.no.ai.global.security.details.CustomUserDetails;
+import com.no.ai.user.domain.UserEntity;
+import com.no.ai.user.repository.UserRepository;
 import lombok.AllArgsConstructor;
 import org.modelmapper.ModelMapper;
 
@@ -11,28 +15,44 @@ import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 
-import java.awt.*;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @AllArgsConstructor
 public class BoardService {
     private final BoardRepository boardRepository;
+    private final UserRepository userRepository;
+    private final FavoriteRepository favoriteRepository;
     private final ModelMapper modelMapper;
 
-    public List<BoardDTO.Get> read() {
+    public List<BoardDTO.Get> read(CustomUserDetails userDetails) {
         List<Board> boardList = boardRepository.findAll();
 
+        UserEntity user = userRepository.findById(userDetails.getUser().getUserId())
+                .orElseThrow();
+        Set<Long> favoriteBoardIds = favoriteRepository.findByUser(user).stream()
+                .map(f -> f.getBoard().getId())
+                .collect(Collectors.toSet());
+
+
+        // 리스트 순회하면서 favorite 리스트에 해당되는 Board가 있는 지 찾기?
+        // id가 좋아요한 Board들을 갖고 오기.
+        // 해당하는 Board들의 isFavorite 값들을 True로 변경해주기?
         return boardList.stream()
                 .map(board -> BoardDTO.Get.builder()
                         .id(board.getId())
                         .title(board.getTitle())
                         .content(board.getContent())
                         .writer(board.getWriter())
+                        .uploadDir(board.getUploadDir())
+                        .liked(favoriteBoardIds.contains(board.getId()))
+                        .likedCount(board.getLikedCount())
                         .build())
                 .toList();
     }
@@ -42,6 +62,7 @@ public class BoardService {
                 .title(dto.getTitle())
                 .content(dto.getContent())
                 .writer(dto.getWriter())
+                .likedCount(0)
                 .build();
 
         return boardRepository.save(board);
@@ -62,11 +83,24 @@ public class BoardService {
         boardRepository.delete(board);
     }
 
-    public BoardDTO.Get getBoard(Long id) {
+    public BoardDTO.Get getBoard(Long id, CustomUserDetails userDetails) {
         Board board = boardRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 존재하지 않습니다."));
 
-        return modelMapper.map(board, BoardDTO.Get.class);
+        BoardDTO.Get dto =  modelMapper.map(board, BoardDTO.Get.class);
+
+        UserEntity user = userRepository.findById(userDetails.getUser().getUserId())
+                .orElseThrow();
+
+        Set<Long> favoriteBoardIds = favoriteRepository.findByUser(user).stream()
+                .map(f -> f.getBoard().getId())
+                .collect(Collectors.toSet());
+
+        if (favoriteBoardIds.contains(id)) {
+            dto.setLiked(true);
+        }
+
+        return dto;
     }
 
     public ImageDto.Response getImage(Long id) {

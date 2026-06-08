@@ -1,9 +1,14 @@
 package com.no.ai.user.domain;
 
+import com.no.ai.board.domain.Board;
+import com.no.ai.board.domain.Comment;
 import com.no.ai.inventory.domain.Inventory;
 import com.no.ai.money.domain.Money;
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Builder
@@ -33,4 +38,10 @@ public class UserEntity {
     @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JoinColumn(name = "inventory_id")
     private Inventory inventory;
+
+    @OneToMany(mappedBy = "user")
+    private List<Board> boards = new ArrayList<>();
+
+    @OneToMany(mappedBy = "user")
+    private List<Comment> comments = new ArrayList<>();
 }

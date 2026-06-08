@@ -1,11 +1,20 @@
 import client from './client'
 
+export interface CommentItem {
+  id?: number
+  nickName: string
+  content: string
+}
+
 export interface BoardItem {
   id: number
   title: string
   content: string
   writer: string
   uploadDir?: string
+  liked: boolean
+  likedCount: number
+  comments?: CommentItem[]
 }
 
 export interface CreateBoardRequest {
@@ -43,5 +52,13 @@ export const boardService = {
 
   like(id: number): Promise<void> {
     return client.post(`/favorite/${id}`)
+  },
+
+  comment(boardId: number, content: string): Promise<void> {
+    return client.post('/comment', { boardId, content })
+  },
+
+  getComments(boardId: number): Promise<CommentItem[]> {
+    return client.get<CommentItem[]>(`/comment/${boardId}`).then(res => res.data)
   },
 }

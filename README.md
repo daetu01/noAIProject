@@ -23,7 +23,39 @@ noAI는 Spring Boot, Vue, FastAPI를 기반으로 한 통합 웹 서비스입니
 - Swagger UI 기반 API 문서 제공
 - Redis Cache 기반 위험도/상세 조회 캐싱
 
-## 3. 아키텍처
+## 3. 스크린샷
+
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <strong>메인 페이지</strong><br/>
+      <img src="docs/images/mainPage.png" alt="메인 페이지" width="100%"/>
+    </td>
+    <td align="center" width="50%">
+      <strong>로그인</strong><br/>
+      <img src="docs/images/login.png" alt="로그인" width="100%"/>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <strong>교통 현황 대시보드</strong><br/>
+      <img src="docs/images/traffic.png" alt="교통 현황 대시보드" width="100%"/>
+    </td>
+    <td align="center" width="50%">
+      <strong>교통 지점 위험도 상세</strong><br/>
+      <img src="docs/images/risk.png" alt="교통 지점 위험도 상세" width="100%"/>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <strong>커뮤니티 게시판</strong><br/>
+      <img src="docs/images/board.png" alt="커뮤니티 게시판" width="100%"/>
+    </td>
+    <td></td>
+  </tr>
+</table>
+
+## 4. 아키텍처
 
 ```mermaid
 flowchart LR
@@ -60,7 +92,7 @@ noAI/
 └─ .env.example
 ```
 
-## 4. 기술 스택
+## 5. 기술 스택
 
 ### Backend
 
@@ -103,7 +135,7 @@ noAI/
 - Backend container
 - Frontend Nginx container
 
-## 5. 데이터 수집 흐름
+## 6. 데이터 수집 흐름
 
 ```mermaid
 sequenceDiagram
@@ -139,7 +171,7 @@ sequenceDiagram
 - 이벤트 시간대와 사고 지속 시간이 겹침
 - 사고 설명(`accInfo`)에 교통 지점의 도로 키워드가 포함됨
 
-## 6. AI 이상탐지 흐름
+## 7. AI 이상탐지 흐름
 
 ```mermaid
 sequenceDiagram
@@ -172,7 +204,7 @@ AI 응답:
 - `aiScore`: Isolation Forest decision score
 - `status`: `ANOMALY` 또는 `NORMAL`
 
-## 7. API 문서 Swagger
+## 8. API 문서 Swagger
 
 Springdoc OpenAPI로 Swagger UI를 제공합니다.
 
@@ -181,42 +213,81 @@ Springdoc OpenAPI로 Swagger UI를 제공합니다.
 - 로컬 Swagger UI: `http://localhost:8080/swagger-ui/index.html`
 - 로컬 OpenAPI JSON: `http://localhost:8080/v3/api-docs`
 
-주요 Traffic API:
+**User** `/user`
 
-| Method | Path | Description |
-| --- | --- | --- |
-| GET | `/api/traffic/spot?ymd={yyyyMMdd}&hour={hour}` | 지점별 교통량 수집/조회 |
-| GET | `/api/traffic/volumes?spotNum={spotNum}&ymd={yyyyMMdd}` | 특정 지점 시간대별 교통량 |
-| GET | `/api/traffic/risk?spotNum={spotNum}&ymd={yyyyMMdd}&hour={hour}` | 특정 지점 위험도 |
-| GET | `/api/traffic/risks?ymd={yyyyMMdd}&hour={hour}` | 전체 지점 위험도 |
-| GET | `/api/traffic/details/{spotNum}?ymd={yyyyMMdd}&hour={hour}` | 지점 상세 분석 |
-| GET | `/api/traffic/events` | 위험 이벤트 목록 |
-| GET | `/api/traffic/dataset` | AI 학습/분석용 데이터셋 |
+| Method | Path | Auth | Description |
+| --- | --- | --- | --- |
+| POST | `/user/signup` | | 회원가입 |
+| POST | `/user/login` | | 로그인 및 JWT 발급 |
 
-기타 주요 API:
+**Board** `/board`
 
-| Method | Path | Description |
-| --- | --- | --- |
-| POST | `/user/signup` | 회원가입 |
-| POST | `/user/login` | 로그인 및 JWT 발급 |
-| GET | `/board` | 게시글 목록 조회 |
-| POST | `/board` | 게시글 작성 및 이미지 업로드 |
-| GET | `/board/{id}` | 게시글 상세 조회 |
-| GET | `/maple/id` | 메이플 캐릭터 정보 조회 |
+| Method | Path | Auth | Description |
+| --- | --- | --- | --- |
+| GET | `/board` | ✓ | 게시글 목록 조회 (좋아요 여부 포함) |
+| POST | `/board` | | 게시글 작성 (multipart: dto + file) |
+| PUT | `/board` | | 게시글 수정 |
+| DELETE | `/board?id={id}` | | 게시글 삭제 |
+| GET | `/board/{id}` | ✓ | 게시글 상세 조회 |
+| GET | `/board/image/{id}` | | 게시글 이미지 조회 |
 
-WebSocket:
+**Favorite** `/favorite`
+
+| Method | Path | Auth | Description |
+| --- | --- | --- | --- |
+| POST | `/favorite/{id}` | ✓ | 게시글 좋아요 토글 (on/off) |
+
+**Inventory** `/inventory`
+
+| Method | Path | Auth | Description |
+| --- | --- | --- | --- |
+| GET | `/inventory` | ✓ | 내 인벤토리 조회 |
+
+**Market** `/market`
+
+| Method | Path | Auth | Description |
+| --- | --- | --- | --- |
+| GET | `/market` | | 마켓플레이스 아이템 전체 조회 |
+| POST | `/market/register` | ✓ | 아이템 등록 |
+| PUT | `/market/update` | ✓ | 아이템 가격 수정 |
+
+**Trade** `/trade`
+
+| Method | Path | Auth | Description |
+| --- | --- | --- | --- |
+| POST | `/trade/buy` | ✓ | 아이템 구매 |
+
+**Maple** `/maple`
+
+| Method | Path | Auth | Description |
+| --- | --- | --- | --- |
+| GET | `/maple/id?characterName={name}` | | 메이플 캐릭터 정보 조회 |
+
+**Traffic** `/api/traffic`
+
+| Method | Path | Auth | Description |
+| --- | --- | --- | --- |
+| GET | `/api/traffic/spot?ymd={yyyyMMdd}&hour={hour}` | | 지점별 교통량 수집/조회 |
+| GET | `/api/traffic/volumes?spotNum={spotNum}&ymd={yyyyMMdd}` | | 특정 지점 시간대별 교통량 |
+| GET | `/api/traffic/risk?spotNum={spotNum}&ymd={yyyyMMdd}&hour={hour}` | | 특정 지점 위험도 |
+| GET | `/api/traffic/risks?ymd={yyyyMMdd}&hour={hour}` | | 전체 지점 위험도 |
+| GET | `/api/traffic/details/{spotNum}?ymd={yyyyMMdd}&hour={hour}` | | 지점 상세 분석 |
+| GET | `/api/traffic/events` | | 위험 이벤트 목록 |
+| GET | `/api/traffic/dataset` | | AI 학습/분석용 데이터셋 |
+
+**WebSocket**
 
 - Endpoint: `/ws`
 - Topic: `/topic/traffic-alerts`
 - Payload: `TrafficAlertDto`
 
-## 8. 트러블슈팅
+## 9. 트러블슈팅
 
 개발 중 겪은 문제와 해결 과정은 별도 문서로 정리했습니다.
 
 - [트러블슈팅 문서](docs/troubleshooting.md)
 
-## 9. 실행 방법 Docker Compose
+## 10. 실행 방법 Docker Compose
 
 ### 환경 변수 준비
 

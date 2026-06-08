@@ -9,7 +9,9 @@
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\SSAFY\\\\Desktop\\\\ssafy\\\\noAI\" -Directory)",
       "Bash(curl -s \"http://localhost:8080/api/weather/daily?ymd=20260527\")",
       "Bash(curl -s \"http://localhost:8080/api/weather/daily/short\")",
-      "Bash(curl -s -v \"http://localhost:8080/api/weather/daily?ymd=20260527\")"
+      "Bash(curl -s -v \"http://localhost:8080/api/weather/daily?ymd=20260527\")",
+      "Bash(findstr -i env)",
+      "Bash(Get-Content \"c:\\\\Users\\\\daisw\\\\OneDrive\\\\Desktop\\\\noAIProject\\\\no-\\\\src\\\\api\\\\boardService.ts\")"
     ]
   }
 }

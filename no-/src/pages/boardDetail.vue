@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
-import { boardService, type BoardItem } from '@/api/boardService'
+import { boardService, type BoardItem, type CommentItem } from '@/api/boardService'
 import { useAppStore } from '@/stores/app'
 
 const route = useRoute()
@@ -11,11 +11,21 @@ const board = ref<BoardItem | null>(null)
 const loading = ref(false)
 const errorMsg = ref('')
 const liked = ref(false)
+const likedCount = ref(0)
 const liking = ref(false)
+const comments = ref<CommentItem[]>([])
+const commentText = ref('')
+const submitting = ref(false)
 
 async function load() {
   loading.value = true
-  try { board.value = await boardService.getOne(Number(route.params.id)) }
+  try {
+    const id = Number(route.params.id)
+    board.value = await boardService.getOne(id)
+    liked.value = board.value.liked
+    likedCount.value = board.value.likedCount
+    comments.value = await boardService.getComments(id)
+  }
   catch { errorMsg.value = '게시글을 불러오지 못했습니다.' }
   finally { loading.value = false }
 }
@@ -30,8 +40,22 @@ async function toggleLike() {
   try {
     await boardService.like(board.value.id)
     liked.value = !liked.value
+    likedCount.value += liked.value ? 1 : -1
   } finally {
     liking.value = false
+  }
+}
+async function submitComment() {
+  if (!board.value || !commentText.value.trim() || submitting.value) return
+  submitting.value = true
+  try {
+    await boardService.comment(board.value.id, commentText.value.trim())
+    commentText.value = ''
+    comments.value = await boardService.getComments(board.value.id)
+  } catch {
+    errorMsg.value = '댓글 작성에 실패했습니다.'
+  } finally {
+    submitting.value = false
   }
 }
 onMounted(load)
@@ -77,7 +101,7 @@ onMounted(load)
         </header>
 
         <div v-if="board.uploadDir" class="cover-wrap">
-          <img :src="board.uploadDir" alt="" class="cover-img" />
+          <img :src="`/board/image/${board.id}`" alt="" class="cover-img" />
         </div>
 
         <p class="article-content">{{ board.content }}</p>
@@ -94,8 +118,39 @@ onMounted(load)
               {{ liked ? 'mdi-heart' : 'mdi-heart-outline' }}
             </v-icon>
             <span>{{ liked ? '좋아요 취소' : '좋아요' }}</span>
+            <span v-if="likedCount > 0" class="like-count-badge">{{ likedCount }}</span>
           </button>
         </div>
+
+        <!-- 댓글 -->
+        <section class="comment-section">
+          <h3 class="comment-heading">Comments</h3>
+
+          <div v-if="comments.length > 0" class="comment-list">
+            <div v-for="(c, i) in comments" :key="i" class="comment-item">
+              <span class="comment-writer">{{ c.nickName }}</span>
+              <p class="comment-content">{{ c.content }}</p>
+            </div>
+          </div>
+          <p v-else class="comment-empty">아직 댓글이 없습니다.</p>
+
+          <form class="comment-form" @submit.prevent="submitComment">
+            <textarea
+              v-model="commentText"
+              class="comment-input"
+              placeholder="댓글을 입력하세요..."
+              rows="3"
+              :disabled="submitting"
+            />
+            <div class="comment-form-footer">
+              <span class="comment-char">{{ commentText.length }} / 500</span>
+              <button type="submit" class="btn-pri comment-submit" :disabled="submitting || !commentText.trim()">
+                <v-icon size="13" class="mr-1">mdi-send</v-icon>
+                {{ submitting ? '작성 중...' : '댓글 작성' }}
+              </button>
+            </div>
+          </form>
+        </section>
 
         <footer class="article-footer">
           <div class="footer-divider" />
@@ -228,6 +283,55 @@ onMounted(load)
 .like-big-btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
 .like-icon { transition: transform .2s var(--ease); }
 .like-big-btn.liked .like-icon { transform: scale(1.15); }
+.like-count-badge {
+  background: rgba(244,114,182,.18); border: 1px solid rgba(244,114,182,.3);
+  border-radius: 100px; padding: 2px 9px;
+  font-size: 12px; font-weight: 700; color: #f472b6;
+}
+
+/* ── Comments ─────────────────────────────────────────────── */
+.comment-section {
+  border-top: 1px solid var(--glass-border);
+  padding-top: 40px;
+  margin-bottom: 48px;
+}
+.comment-heading {
+  font-family: var(--font-d); font-size: 15px; font-weight: 700;
+  letter-spacing: .06em; color: var(--text); margin-bottom: 24px;
+}
+.comment-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 28px; }
+.comment-item {
+  background: var(--glass); border: 1px solid var(--glass-border);
+  border-radius: var(--r-sm); padding: 14px 16px;
+}
+.comment-writer {
+  font-size: 11px; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--blue); display: block; margin-bottom: 6px;
+}
+.comment-content { font-size: 14px; color: var(--text-2); line-height: 1.6; margin: 0; }
+.comment-empty {
+  font-size: 13px; color: var(--text-3); text-align: center;
+  padding: 32px 0; margin-bottom: 28px;
+}
+.comment-form { display: flex; flex-direction: column; gap: 10px; }
+.comment-input {
+  width: 100%; background: var(--glass); border: 1px solid var(--glass-border);
+  border-radius: var(--r-sm); padding: 12px 14px;
+  color: var(--text); font: 14px var(--font); resize: vertical;
+  outline: none; transition: border-color .2s;
+}
+.comment-input::placeholder { color: var(--text-3); }
+.comment-input:focus { border-color: rgba(91,156,246,.45); }
+.comment-input:disabled { opacity: .5; cursor: not-allowed; }
+.comment-form-footer {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.comment-char { font-size: 11px; color: var(--text-3); }
+.comment-submit {
+  display: inline-flex; align-items: center;
+  padding: 8px 20px; font-size: 12px;
+}
+.comment-submit:disabled { opacity: .4; cursor: not-allowed; }
 
 /* ── Footer ───────────────────────────────────────────────── */
 .footer-divider { height: 1px; background: var(--glass-border); margin-bottom: 20px; }

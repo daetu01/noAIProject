@@ -19,11 +19,11 @@ const modalY = ref(0)
 const isDragging = ref(false)
 const dragStartX = ref(0)
 const dragStartY = ref(0)
-const likedSet = ref(new Set<number>())
-const likingSet = ref(new Set<number>())
+const likingIds = ref(new Set<number>())
 
 async function load() {
   loading.value = true
+  errorMsg.value = ''
   try { boards.value = await boardService.getAll() }
   catch { errorMsg.value = '게시글을 불러오지 못했습니다.' }
   finally { loading.value = false }
@@ -57,19 +57,21 @@ function stopDrag() {
   isDragging.value = false
   document.removeEventListener('mousemove', onDrag); document.removeEventListener('mouseup', stopDrag)
 }
-async function toggleLike(id: number, e: MouseEvent) {
-  e.stopPropagation()
-  if (likingSet.value.has(id)) return
-  likingSet.value = new Set(likingSet.value).add(id)
+async function toggleLike(id: number, e?: MouseEvent) {
+  e?.stopPropagation()
+  if (likingIds.value.has(id)) return
+  likingIds.value = new Set(likingIds.value).add(id)
   try {
     await boardService.like(id)
-    const next = new Set(likedSet.value)
-    next.has(id) ? next.delete(id) : next.add(id)
-    likedSet.value = next
+    const b = boards.value.find(b => b.id === id)
+    if (b) {
+      b.liked = !b.liked
+      b.likedCount += b.liked ? 1 : -1
+    }
   } finally {
-    const next = new Set(likingSet.value)
+    const next = new Set(likingIds.value)
     next.delete(id)
-    likingSet.value = next
+    likingIds.value = next
   }
 }
 onMounted(load)
@@ -107,28 +109,32 @@ onUnmounted(stopDrag)
         <p class="board-sub">Ideas, projects, and conversations from the community.</p>
       </div>
 
-      <!-- Error -->
-      <div v-if="errorMsg" class="error-bar">{{ errorMsg }}</div>
-
       <!-- Loading -->
       <div v-if="loading" class="state-wrap">
         <v-progress-circular indeterminate color="#5b9cf6" size="32" width="1.5" />
       </div>
 
+      <!-- Error -->
+      <div v-else-if="errorMsg" class="state-wrap error-state">
+        <v-icon size="32" color="rgba(255,71,87,0.6)">mdi-alert-circle-outline</v-icon>
+        <p class="error-msg-text">{{ errorMsg }}</p>
+        <button class="btn-pri" @click="load">다시 시도</button>
+      </div>
+
       <!-- Empty -->
-      <div v-else-if="boards.length === 0 && !errorMsg" class="state-wrap empty">
+      <div v-else-if="boards.length === 0" class="state-wrap empty">
         <span class="empty-glyph">✦</span>
         <p class="empty-text">아직 게시글이 없습니다</p>
         <button class="btn-pri" @click="openDialog">첫 글 작성하기</button>
       </div>
 
-      <!-- Feed -->
-      <div v-else class="feed">
+      <!-- Feed (boards.length > 0 guaranteed here) -->
+      <div v-else-if="boards.length > 0" class="feed">
 
         <!-- Featured (first post) -->
         <div class="featured-card" @click="router.push(`/board/${boards[0].id}`)">
           <div class="featured-thumb">
-            <img v-if="boards[0].uploadDir" :src="boards[0].uploadDir" alt="" class="thumb-img" />
+            <img v-if="boards[0].uploadDir" :src="`/board/image/${boards[0].id}`" alt="" class="thumb-img" />
             <div v-else class="thumb-placeholder">
               <div class="placeholder-glow" />
               <v-icon size="44" color="rgba(91,156,246,0.25)">mdi-image-outline</v-icon>
@@ -145,11 +151,12 @@ onUnmounted(stopDrag)
               <div class="post-actions">
                 <button
                   class="like-btn"
-                  :class="{ liked: likedSet.has(boards[0].id) }"
-                  :disabled="likingSet.has(boards[0].id)"
+                  :class="{ liked: boards[0].liked }"
+                  :disabled="likingIds.has(boards[0].id)"
                   @click="toggleLike(boards[0].id, $event)"
                 >
-                  <v-icon size="14">{{ likedSet.has(boards[0].id) ? 'mdi-heart' : 'mdi-heart-outline' }}</v-icon>
+                  <v-icon size="14">{{ boards[0].liked ? 'mdi-heart' : 'mdi-heart-outline' }}</v-icon>
+                  <span v-if="boards[0].likedCount > 0" class="like-count">{{ boards[0].likedCount }}</span>
                 </button>
                 <button
                   v-if="boards[0].writer === store.user?.nickName"
@@ -163,14 +170,14 @@ onUnmounted(stopDrag)
         </div>
 
         <!-- Article grid -->
-        <div v-if="boards.length > 1" class="article-grid stagger">
+        <div v-if="boards.length > 1" class="article-grid">
           <div
             v-for="board in boards.slice(1)" :key="board.id"
-            class="article-card reveal-s"
+            class="article-card"
             @click="router.push(`/board/${board.id}`)"
           >
             <div class="article-thumb">
-              <img v-if="board.uploadDir" :src="board.uploadDir" alt="" class="thumb-img" />
+              <img v-if="board.uploadDir" :src="`/board/image/${board.id}`" alt="" class="thumb-img" />
               <div v-else class="thumb-placeholder">
                 <div class="placeholder-glow" />
               </div>
@@ -185,11 +192,12 @@ onUnmounted(stopDrag)
                 <div class="post-actions">
                   <button
                     class="like-btn"
-                    :class="{ liked: likedSet.has(board.id) }"
-                    :disabled="likingSet.has(board.id)"
+                    :class="{ liked: board.liked }"
+                    :disabled="likingIds.has(board.id)"
                     @click="toggleLike(board.id, $event)"
                   >
-                    <v-icon size="13">{{ likedSet.has(board.id) ? 'mdi-heart' : 'mdi-heart-outline' }}</v-icon>
+                    <v-icon size="13">{{ board.liked ? 'mdi-heart' : 'mdi-heart-outline' }}</v-icon>
+                    <span v-if="board.likedCount > 0" class="like-count">{{ board.likedCount }}</span>
                   </button>
                   <button
                     v-if="board.writer === store.user?.nickName"
@@ -289,17 +297,14 @@ onUnmounted(stopDrag)
 }
 
 /* ── States ───────────────────────────────────────────────── */
-.error-bar {
-  background: rgba(255,71,87,.08); border: 1px solid rgba(255,71,87,.2);
-  border-radius: var(--r-sm); padding: 10px 16px;
-  font-size: 13px; color: #ff4757; margin-bottom: 24px;
-}
 .state-wrap {
   display: flex; flex-direction: column; align-items: center;
   justify-content: center; gap: 20px; padding: 100px 0; text-align: center;
 }
 .empty-glyph { font-size: 32px; color: var(--text-3); }
 .empty-text { font-size: 14px; color: var(--text-3); letter-spacing: .1em; }
+.error-state { gap: 16px; }
+.error-msg-text { font-size: 14px; color: rgba(255,71,87,.8); }
 
 /* ── Featured card ────────────────────────────────────────── */
 .featured-card {
@@ -372,6 +377,7 @@ onUnmounted(stopDrag)
 .like-btn:hover { border-color: rgba(244,114,182,.35); color: #f472b6; background: rgba(244,114,182,.06); }
 .like-btn.liked { border-color: rgba(244,114,182,.5); color: #f472b6; background: rgba(244,114,182,.1); }
 .like-btn:disabled { opacity: .45; cursor: not-allowed; }
+.like-count { font-size: 11px; font-weight: 600; line-height: 1; }
 
 /* ── Article grid ─────────────────────────────────────────── */
 .article-grid {

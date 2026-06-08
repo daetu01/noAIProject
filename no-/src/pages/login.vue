@@ -106,15 +106,20 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
+import { RouterLink, useRouter, useRoute } from 'vue-router'
 import { useAppStore } from '@/stores/app'
 
 const store   = useAppStore()
 const router  = useRouter()
+const route   = useRoute()
 
 const email    = ref('')
 const password = ref('')
-const errorMsg = ref('')
+const errorMsg = ref(
+  route.query.reason === 'session_expired'
+    ? '세션이 만료되었습니다. 다시 로그인해주세요.'
+    : ''
+)
 const loading  = ref(false)
 const showPw   = ref(false)
 const focused  = ref<string | null>(null)

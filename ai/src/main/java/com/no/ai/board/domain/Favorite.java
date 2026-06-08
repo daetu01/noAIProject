@@ -1,6 +1,5 @@
-package com.no.ai.favorite.domain;
+package com.no.ai.board.domain;
 
-import com.no.ai.board.domain.Board;
 import com.no.ai.user.domain.UserEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
