@@ -16,6 +16,8 @@ const liking = ref(false)
 const comments = ref<CommentItem[]>([])
 const commentText = ref('')
 const submitting = ref(false)
+const editingId = ref<number | null>(null)
+const editText = ref('')
 
 async function load() {
   loading.value = true
@@ -43,6 +45,33 @@ async function toggleLike() {
     likedCount.value += liked.value ? 1 : -1
   } finally {
     liking.value = false
+  }
+}
+function startEdit(c: CommentItem) {
+  editingId.value = c.id!
+  editText.value = c.content
+}
+function cancelEdit() {
+  editingId.value = null
+  editText.value = ''
+}
+async function saveEdit(commentId: number | undefined) {
+  if (!commentId || !editText.value.trim() || !board.value) return
+  try {
+    await boardService.updateComment(commentId, editText.value.trim())
+    comments.value = await boardService.getComments(board.value.id)
+    cancelEdit()
+  } catch {
+    errorMsg.value = '댓글 수정에 실패했습니다.'
+  }
+}
+async function removeComment(commentId: number | undefined) {
+  if (!commentId || !board.value) return
+  try {
+    await boardService.deleteComment(commentId)
+    comments.value = await boardService.getComments(board.value.id)
+  } catch {
+    errorMsg.value = '댓글 삭제에 실패했습니다.'
   }
 }
 async function submitComment() {
@@ -127,9 +156,28 @@ onMounted(load)
           <h3 class="comment-heading">Comments</h3>
 
           <div v-if="comments.length > 0" class="comment-list">
-            <div v-for="(c, i) in comments" :key="i" class="comment-item">
-              <span class="comment-writer">{{ c.nickName }}</span>
-              <p class="comment-content">{{ c.content }}</p>
+            <div v-for="c in comments" :key="c.id" class="comment-item">
+              <div class="comment-header">
+                <span class="comment-writer">{{ c.nickName }}</span>
+                <div v-if="c.nickName === store.user?.nickName && editingId !== c.id" class="comment-actions">
+                  <button class="comment-action-btn" @click="startEdit(c)">
+                    <v-icon size="13">mdi-pencil-outline</v-icon>
+                  </button>
+                  <button class="comment-action-btn danger" @click="removeComment(c.id)">
+                    <v-icon size="13">mdi-trash-can-outline</v-icon>
+                  </button>
+                </div>
+              </div>
+
+              <!-- 수정 모드 -->
+              <template v-if="editingId === c.id">
+                <textarea v-model="editText" class="comment-input edit-input" rows="2" />
+                <div class="edit-actions">
+                  <button class="comment-action-text" @click="cancelEdit">취소</button>
+                  <button class="comment-action-text save" @click="saveEdit(c.id)">저장</button>
+                </div>
+              </template>
+              <p v-else class="comment-content">{{ c.content }}</p>
             </div>
           </div>
           <p v-else class="comment-empty">아직 댓글이 없습니다.</p>
@@ -304,11 +352,33 @@ onMounted(load)
   background: var(--glass); border: 1px solid var(--glass-border);
   border-radius: var(--r-sm); padding: 14px 16px;
 }
+.comment-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 6px;
+}
 .comment-writer {
   font-size: 11px; font-weight: 700; letter-spacing: .08em;
-  text-transform: uppercase; color: var(--blue); display: block; margin-bottom: 6px;
+  text-transform: uppercase; color: var(--blue);
 }
+.comment-actions { display: flex; gap: 4px; }
+.comment-action-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; border-radius: 6px;
+  background: transparent; border: none;
+  color: var(--text-3); cursor: pointer; transition: all .15s;
+}
+.comment-action-btn:hover { background: var(--glass); color: var(--text-2); }
+.comment-action-btn.danger:hover { color: #ff4757; }
 .comment-content { font-size: 14px; color: var(--text-2); line-height: 1.6; margin: 0; }
+.edit-input { margin-top: 4px; margin-bottom: 8px; }
+.edit-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.comment-action-text {
+  background: none; border: none; cursor: pointer;
+  font: 12px var(--font); color: var(--text-3); transition: color .15s; padding: 0;
+}
+.comment-action-text:hover { color: var(--text-2); }
+.comment-action-text.save { color: var(--blue); font-weight: 600; }
+.comment-action-text.save:hover { color: #7db4ff; }
 .comment-empty {
   font-size: 13px; color: var(--text-3); text-align: center;
   padding: 32px 0; margin-bottom: 28px;

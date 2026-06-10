@@ -24,4 +24,14 @@ public class CommentController {
     public List<CommentDto.GET> getComments(@PathVariable Long boardId) {
         return commentService.getByBoardId(boardId);
     }
+
+    @DeleteMapping("/{commentId}")
+    public void delete(@PathVariable Long commentId, @AuthenticationPrincipal CustomUserDetails customUserDetails) {
+        commentService.delete(commentId, customUserDetails);
+    }
+
+    @PutMapping("/{commentId}")
+    public void put(@PathVariable Long commentId, @RequestBody CommentDto.PUT dto, @AuthenticationPrincipal CustomUserDetails customUserDetails) {
+        commentService.put(commentId, dto, customUserDetails);
+    }
 }

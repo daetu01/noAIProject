@@ -12,6 +12,10 @@ const store = useAppStore()
     </div>
     <div class="divider" />
     <div class="cards">
+      <router-link to="/music" class="card">
+        <div><p class="card-category">MUSIC</p><p class="card-title">뮤직</p><p class="card-desc">트랙 업로드 · 등록</p></div>
+        <v-icon color="#ccc" size="18">mdi-arrow-right</v-icon>
+      </router-link>
       <router-link to="/board" class="card">
         <div><p class="card-category">COMMUNITY</p><p class="card-title">게시판</p><p class="card-desc">커뮤니티 글 읽기 · 작성</p></div>
         <v-icon color="#ccc" size="18">mdi-arrow-right</v-icon>

@@ -61,4 +61,12 @@ export const boardService = {
   getComments(boardId: number): Promise<CommentItem[]> {
     return client.get<CommentItem[]>(`/comment/${boardId}`).then(res => res.data)
   },
+
+  deleteComment(commentId: number): Promise<void> {
+    return client.delete(`/comment/${commentId}`)
+  },
+
+  updateComment(commentId: number, content: string): Promise<void> {
+    return client.put(`/comment/${commentId}`, { content })
+  },
 }

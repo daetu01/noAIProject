@@ -5,6 +5,9 @@
         <p class="s-label">Sonic Universe</p>
         <h2 class="s-title">Music</h2>
         <p class="s-sub">Original electronic productions — each track a chapter in a digital world.</p>
+        <RouterLink v-if="store.isLoggedIn" to="/music" class="upload-btn">
+          <span>+ 트랙 업로드</span>
+        </RouterLink>
       </div>
 
       <div class="music-layout">
@@ -128,7 +131,11 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import { RouterLink } from 'vue-router'
+import { useAppStore } from '@/stores/app'
 import { tracks } from '@/data'
+
+const store = useAppStore()
 
 type Track = typeof tracks[0]
 
@@ -196,6 +203,18 @@ onUnmounted(() => stopTimer())
 <style scoped>
 .music-section { background: var(--bg-2); }
 .section-header { margin-bottom: 56px; }
+.upload-btn {
+  display: inline-flex; align-items: center;
+  margin-top: 20px; padding: 9px 20px;
+  border-radius: 100px;
+  background: rgba(91,156,246,.1); border: 1px solid rgba(91,156,246,.3);
+  font-size: 13px; font-weight: 500; color: #5b9cf6;
+  text-decoration: none; transition: all .25s ease;
+}
+.upload-btn:hover {
+  background: rgba(91,156,246,.2); border-color: rgba(91,156,246,.55);
+  transform: translateY(-1px); box-shadow: 0 6px 20px rgba(91,156,246,.2);
+}
 
 .music-layout { display: grid; grid-template-columns: 1fr 360px; gap: 32px; align-items: start; }
 

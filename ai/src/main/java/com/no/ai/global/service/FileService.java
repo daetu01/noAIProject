@@ -16,6 +16,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -63,5 +64,41 @@ public class FileService {
             e.printStackTrace();
             throw new RuntimeException("Could not store file : " + multipartFile.getOriginalFilename());
         }
+    }
+
+    public String saveAudio(MultipartFile file) throws IOException {
+        String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
+
+        Path path = Paths.get(
+                "uploads/music",
+                fileName);
+
+        Files.createDirectories(
+                path.getParent()
+        );
+
+        file.transferTo(
+                path
+        );
+
+        return "/uploads/music/" + fileName;
+    }
+
+    public String saveImage(MultipartFile file) throws IOException {
+        String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
+
+        Path path = Paths.get(
+                "uploads/cover",
+                fileName);
+
+        Files.createDirectories(
+                path.getParent()
+        );
+
+        file.transferTo(
+                path
+        );
+
+        return "/uploads/cover/" + fileName;
     }
 }

@@ -69,6 +69,7 @@ export default defineConfig({
       '/api': 'http://localhost:8080',
       '/favorite': 'http://localhost:8080',
       '/comment': 'http://localhost:8080',
+      '/music': 'http://localhost:8080',
     },
   },
 })

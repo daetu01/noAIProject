@@ -57,6 +57,11 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/music',
+      component: () => import('@/pages/music.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/admin',
       component: () => import('@/pages/admin.vue'),
       meta: { requiresAuth: true, requiresAdmin: true },

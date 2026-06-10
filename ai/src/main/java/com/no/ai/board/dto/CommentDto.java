@@ -22,4 +22,9 @@ public class CommentDto {
         private String nickName;
         private String content;
     }
+
+    @Getter
+    public static class PUT {
+        private String content;
+    }
 }
