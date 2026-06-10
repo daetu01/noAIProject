@@ -11,7 +11,8 @@
       "Bash(curl -s \"http://localhost:8080/api/weather/daily/short\")",
       "Bash(curl -s -v \"http://localhost:8080/api/weather/daily?ymd=20260527\")",
       "Bash(findstr -i env)",
-      "Bash(Get-Content \"c:\\\\Users\\\\daisw\\\\OneDrive\\\\Desktop\\\\noAIProject\\\\no-\\\\src\\\\api\\\\boardService.ts\")"
+      "Bash(Get-Content \"c:\\\\Users\\\\daisw\\\\OneDrive\\\\Desktop\\\\noAIProject\\\\no-\\\\src\\\\api\\\\boardService.ts\")",
+      "Bash(npx vue-tsc *)"
     ]
   }
 }
