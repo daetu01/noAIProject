@@ -44,10 +44,11 @@ public class BoardController {
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Message> createBoard(@RequestPart("dto") BoardDTO.Post dto,
-                                               @RequestPart("file") MultipartFile file) {
+                                               @RequestPart("file") MultipartFile file,
+                                               @AuthenticationPrincipal CustomUserDetails userDetails) {
 
 
-        Board board = boardService.create(dto);
+        Board board = boardService.create(dto, userDetails);
         fileService.fileUpload(board, file);
         Message message = new Message();
 
@@ -58,8 +59,10 @@ public class BoardController {
     }
 
     @PutMapping
-    public ResponseEntity<Message> updateBoard(@RequestBody BoardDTO.Put dto) {
-        boardService.update(dto);
+    public ResponseEntity<Message> updateBoard(@RequestBody BoardDTO.Put dto,
+                                               @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        boardService.update(dto, userDetails);
 
         Message message = new Message();
         message.setStatus(StatusEnum.OK);
@@ -69,8 +72,8 @@ public class BoardController {
     }
 
     @DeleteMapping
-    public ResponseEntity<Message> deleteBoard(@RequestParam Long id) {
-        boardService.delete(id);
+    public ResponseEntity<Message> deleteBoard(@RequestParam Long id, @AuthenticationPrincipal CustomUserDetails userDetails) {
+        boardService.delete(id, userDetails);
 
         Message message = new Message();
         message.setStatus(StatusEnum.OK);

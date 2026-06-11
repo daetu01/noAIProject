@@ -5,6 +5,7 @@ import com.no.ai.board.domain.Comment;
 import com.no.ai.board.dto.CommentDto;
 import com.no.ai.board.repository.BoardRepository;
 import com.no.ai.board.repository.CommentRepository;
+import com.no.ai.global.exception.ForbiddenException;
 import com.no.ai.global.security.details.CustomUserDetails;
 import com.no.ai.user.domain.UserEntity;
 import com.no.ai.user.repository.UserRepository;
@@ -54,7 +55,7 @@ public class CommentService {
                 .orElseThrow();
 
         if (!comment.getUser().getEmail().equals(userDetails.getUser().getEmail())) {
-            return ;
+            throw new ForbiddenException("댓글 삭제 권한이 없습니다.");
         }
         commentRepository.delete(comment);
     }
@@ -64,7 +65,7 @@ public class CommentService {
                 .orElseThrow();
 
         if (!comment.getUser().getEmail().equals(userDetails.getUser().getEmail())) {
-            throw new IllegalArgumentException("수정 권한이 없습니다.");
+            throw new ForbiddenException("댓글 수정 권한이 없습니다.");
         }
 
         comment.setContent(dto.getContent());

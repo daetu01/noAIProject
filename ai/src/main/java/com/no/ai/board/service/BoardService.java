@@ -5,6 +5,9 @@ import com.no.ai.board.dto.BoardDTO;
 import com.no.ai.board.dto.ImageDto;
 import com.no.ai.board.repository.BoardRepository;
 import com.no.ai.board.repository.FavoriteRepository;
+import com.no.ai.global.exception.AuthenticationException;
+import com.no.ai.global.exception.BadRequestException;
+import com.no.ai.global.exception.NotFoundException;
 import com.no.ai.global.security.details.CustomUserDetails;
 import com.no.ai.user.domain.UserEntity;
 import com.no.ai.user.repository.UserRepository;
@@ -13,6 +16,7 @@ import org.modelmapper.ModelMapper;
 
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -57,35 +61,45 @@ public class BoardService {
                 .toList();
     }
 
-    public Board create(BoardDTO.Post dto) {
+    public Board create(BoardDTO.Post dto, CustomUserDetails userDetails) {
         Board board = Board.builder()
                 .title(dto.getTitle())
                 .content(dto.getContent())
-                .writer(dto.getWriter())
+                .writer(userDetails.getUser().getNickName())
                 .likedCount(0)
                 .build();
 
         return boardRepository.save(board);
     }
 
-    public void update(BoardDTO.Put dto) {
+    public void update(BoardDTO.Put dto, CustomUserDetails userDetails) {
         Board board = boardRepository.findById(dto.getId())
-                        .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 없습니다."));
+                        .orElseThrow(() -> new NotFoundException("해당 게시글이 없습니다."));
+
+        if (!dto.getWriter().equals(userDetails.getUser().getNickName())) {
+            throw new AuthenticationException("게시글 작성자가 아닌 사용자입니다.");
+        }
 
         board.update(dto.getTitle(), dto.getContent());
 
         boardRepository.save(board);
     }
 
-    public void delete(Long id) {
+    public void delete(Long id, @AuthenticationPrincipal CustomUserDetails userDetails) {
         Board board = boardRepository.findById(id)
-                        .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 없습니다."));
+                        .orElseThrow(() -> new NotFoundException("해당 게시글이 없습니다."));
+
+        // User 검증 코드.
+        if (!board.getWriter().equals(userDetails.getUser().getNickName())) {
+            throw new AuthenticationException("게시글 작성자가 아닌 사용자입니다.");
+        }
+
         boardRepository.delete(board);
     }
 
     public BoardDTO.Get getBoard(Long id, CustomUserDetails userDetails) {
         Board board = boardRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 존재하지 않습니다."));
+                .orElseThrow(() -> new NotFoundException("게시글을 찾을 수 없습니다."));
 
         BoardDTO.Get dto =  modelMapper.map(board, BoardDTO.Get.class);
 

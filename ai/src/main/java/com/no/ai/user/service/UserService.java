@@ -31,6 +31,7 @@ public class UserService {
     private final InventoryRepository inventoryRepository;
     private final InventoryItemRepository inventoryItemRepository;
 
+    @Transactional
     public Long create(UserEntity entity) {
 
         entity.setPassword(passwordEncoder.encode(entity.getPassword()));
@@ -58,8 +59,6 @@ public class UserService {
         UserEntity user = userRepository.findByEmail(userDto.getEmail())
                 .orElseThrow(() -> new IllegalArgumentException("이메일 또는 비밀번호가 잘못됐습니다."));
 
-
-        System.out.println(user.getNickName() + user.getEmail() + user.getPassword());
         // 2. 비밀번호 일치 여부 확인
         if (!passwordEncoder.matches(userDto.getPassword(), user.getPassword())) {
             throw new IllegalArgumentException("이메일 또는 비밀번호가 잘못되었습니다.");
