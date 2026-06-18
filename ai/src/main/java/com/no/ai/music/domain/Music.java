@@ -32,8 +32,31 @@ public class Music {
 
     private String coverImageUrl;
 
+    private Long play;
+
+    private int likedCount;
+
     private LocalDateTime createdAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
     private UserEntity user;
+
+    public void of(String title, String artist, String description, String genre, String audioUrl, String coverImageUrl) {
+        this.title = title;
+        this.artist = artist;
+        this.description = description;
+        this.genre = genre;
+        this.audioUrl = audioUrl;
+        this.coverImageUrl = coverImageUrl;
+    }
+
+    public void increasePlay() {
+        this.play += 1;
+    }
+    public void increaseLiked() {
+        this.likedCount++ ;
+    }
+    public void decreaseLiked() {
+        this.likedCount-- ;
+    }
 }

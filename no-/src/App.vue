@@ -25,7 +25,7 @@ import ChatBot from './components/ChatBot.vue'
 const route = useRoute()
 
 // Studio layout: landing + auth pages (no Vuetify wrapper)
-const studioRoutes = ['/', '/login', '/signup']
+const studioRoutes = ['/', '/login', '/signup', '/music']
 const isStudio = computed(() => studioRoutes.includes(route.path))
 
 // Service app auth pages don't show nav

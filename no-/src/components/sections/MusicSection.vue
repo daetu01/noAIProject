@@ -10,89 +10,105 @@
         </RouterLink>
       </div>
 
-      <div class="music-layout">
-        <!-- Track list -->
-        <div class="track-list reveal-l">
-          <div class="list-header">
-            <span class="col-num">#</span>
-            <span class="col-title">Title</span>
-            <span class="col-bpm">BPM</span>
-            <span class="col-dur">Duration</span>
+      <div v-if="loading" class="music-state reveal">불러오는 중...</div>
+      <div v-else-if="tracks.length === 0" class="music-state reveal">아직 등록된 트랙이 없습니다.</div>
+
+      <template v-else>
+        <div class="music-layout">
+          <!-- Track list -->
+          <div class="track-list reveal-l">
+            <div class="list-header">
+              <span class="col-num">#</span>
+              <span class="col-title">Title</span>
+              <span class="col-bpm">Plays</span>
+              <span class="col-dur">Likes</span>
+            </div>
+
+            <div
+              v-for="(t, i) in tracks" :key="t.id"
+              :class="['track-row', { active: current?.id === t.id }]"
+              @click="selectTrack(t)"
+            >
+              <div class="col-num">
+                <span v-if="current?.id !== t.id" class="t-num">{{ i + 1 }}</span>
+                <div v-else class="wave-icon">
+                  <div v-for="b in 3" :key="b" class="wbar" :style="`animation-delay:${b*.18}s`" />
+                </div>
+              </div>
+
+              <div class="t-cover" :style="coverStyle(t)">
+                <v-icon v-if="!t.coverImageUrl" size="20" color="#ffffff">mdi-music-note</v-icon>
+              </div>
+
+              <div class="t-info">
+                <span class="t-name">{{ t.title }}</span>
+                <span class="t-meta">{{ t.artist }} · {{ t.genre }}</span>
+              </div>
+
+              <span class="col-bpm t-bpm">{{ t.play }}</span>
+              <span class="col-dur t-dur">{{ t.likedCount }}</span>
+
+              <button class="t-detail-btn" @click.stop="openModal(t)">↗</button>
+            </div>
           </div>
 
-          <div
-            v-for="(t, i) in tracks" :key="t.id"
-            :class="['track-row', { active: current?.id === t.id }]"
-            @click="selectTrack(t)"
-          >
-            <div class="col-num">
-              <span v-if="current?.id !== t.id" class="t-num">{{ i + 1 }}</span>
-              <div v-else class="wave-icon">
-                <div v-for="b in 3" :key="b" class="wbar" :style="`animation-delay:${b*.18}s`" />
+          <!-- Now playing -->
+          <div class="now-playing reveal-r">
+            <div class="np-art" :style="coverStyle(current)">
+              <v-icon v-if="!current?.coverImageUrl" size="56" color="#ffffff" class="np-icon">mdi-music-note</v-icon>
+              <div class="np-overlay" />
+            </div>
+
+            <div class="np-info">
+              <div class="np-badge">NOW PLAYING</div>
+              <h3 class="np-track">{{ current?.title }}</h3>
+              <p class="np-album">{{ current?.artist }} · {{ current?.genre }}</p>
+
+              <!-- Waveform -->
+              <div class="waveform">
+                <div v-for="n in 28" :key="n" class="wf-bar"
+                  :style="`animation-delay:${n*.06}s;height:${8+Math.sin(n*0.7)*14}px`" />
               </div>
-            </div>
 
-            <div class="t-cover" :style="`background:linear-gradient(135deg,${t.colorA},${t.colorB})`">
-              <span>{{ t.emoji }}</span>
-            </div>
-
-            <div class="t-info">
-              <span class="t-name">{{ t.title }}</span>
-              <span class="t-meta">{{ t.album }} · {{ t.genre }}</span>
-            </div>
-
-            <span class="col-bpm t-bpm">{{ t.bpm }}</span>
-            <span class="col-dur t-dur">{{ t.duration }}</span>
-
-            <button class="t-detail-btn" @click.stop="openModal(t)">↗</button>
-          </div>
-        </div>
-
-        <!-- Now playing -->
-        <div class="now-playing reveal-r">
-          <div class="np-art" :style="`background:linear-gradient(135deg,${(current ?? tracks[0]).colorA},${(current ?? tracks[0]).colorB})`">
-            <span class="np-emoji">{{ (current ?? tracks[0]).emoji }}</span>
-            <div class="np-overlay" />
-          </div>
-
-          <div class="np-info">
-            <div class="np-badge">NOW PLAYING</div>
-            <h3 class="np-track">{{ (current ?? tracks[0]).title }}</h3>
-            <p class="np-album">{{ (current ?? tracks[0]).album }} · {{ (current ?? tracks[0]).genre }}</p>
-
-            <!-- Waveform -->
-            <div class="waveform">
-              <div v-for="n in 28" :key="n" class="wf-bar"
-                :style="`animation-delay:${n*.06}s;height:${8+Math.sin(n*0.7)*14}px`" />
-            </div>
-
-            <!-- Progress -->
-            <div class="progress-wrap">
-              <div class="progress-track" @click="seekProgress">
-                <div class="progress-fill" :style="`width:${progress}%`" />
-                <div class="progress-thumb" :style="`left:${progress}%`" />
+              <!-- Progress -->
+              <div class="progress-wrap">
+                <div class="progress-track" @click="seekProgress">
+                  <div class="progress-fill" :style="`width:${progress}%`" />
+                  <div class="progress-thumb" :style="`left:${progress}%`" />
+                </div>
+                <div class="progress-times">
+                  <span>{{ currentTime }}</span>
+                  <span>{{ durationLabel }}</span>
+                </div>
               </div>
-              <div class="progress-times">
-                <span>{{ currentTime }}</span>
-                <span>{{ (current ?? tracks[0]).duration }}</span>
-              </div>
-            </div>
 
-            <!-- Controls -->
-            <div class="controls">
-              <button class="ctrl-btn" @click="prevTrack">⏮</button>
-              <button :class="['ctrl-play', playing ? 'pause' : 'play']" @click="togglePlay">
-                <span>{{ playing ? '⏸' : '▶' }}</span>
+              <!-- Controls -->
+              <div class="controls">
+                <button class="ctrl-btn" @click="prevTrack">⏮</button>
+                <button :class="['ctrl-play', playing ? 'pause' : 'play']" @click="togglePlay">
+                  <span>{{ playing ? '⏸' : '▶' }}</span>
+                </button>
+                <button class="ctrl-btn" @click="nextTrack">⏭</button>
+              </div>
+
+              <button class="np-open-btn" @click="openModal(current)">
+                View Details →
               </button>
-              <button class="ctrl-btn" @click="nextTrack">⏭</button>
             </div>
-
-            <button class="np-open-btn" @click="openModal(current ?? tracks[0])">
-              View Story & Lyrics →
-            </button>
           </div>
         </div>
-      </div>
+
+        <audio
+          ref="audioEl"
+          class="np-audio"
+          :src="current?.audioUrl"
+          @timeupdate="onTimeUpdate"
+          @loadedmetadata="onLoadedMetadata"
+          @ended="nextTrack"
+          @play="playing = true"
+          @pause="playing = false"
+        />
+      </template>
     </div>
 
     <!-- Track modal -->
@@ -100,28 +116,23 @@
       <div class="modal-box" v-if="modalTrack">
         <button class="modal-close" @click="modalTrack = null">✕</button>
 
-        <div class="modal-art" :style="`background:linear-gradient(135deg,${modalTrack.colorA},${modalTrack.colorB})`">
-          <span class="modal-art-emoji">{{ modalTrack.emoji }}</span>
+        <div class="modal-art" :style="coverStyle(modalTrack)">
+          <v-icon v-if="!modalTrack.coverImageUrl" size="64" color="#ffffff" class="modal-art-icon">mdi-music-note</v-icon>
           <div class="modal-art-overlay" />
           <div class="modal-art-meta">
             <span class="tag tag-purple">{{ modalTrack.genre }}</span>
-            <span class="tag tag-blue">{{ modalTrack.bpm }} BPM</span>
-            <span class="tag tag-gray">{{ modalTrack.released }}</span>
+            <span class="tag tag-blue">▶ {{ modalTrack.play }}</span>
+            <span class="tag tag-gray">♥ {{ modalTrack.likedCount }}</span>
           </div>
         </div>
 
         <div class="modal-body">
           <h2 class="modal-title">{{ modalTrack.title }}</h2>
-          <p class="modal-album">{{ modalTrack.album }}</p>
+          <p class="modal-album">{{ modalTrack.artist }}</p>
 
-          <div class="modal-section">
-            <h4>The Story</h4>
-            <p>{{ modalTrack.story }}</p>
-          </div>
-
-          <div class="modal-section">
-            <h4>Lyrics</h4>
-            <pre class="modal-lyrics">{{ modalTrack.lyrics }}</pre>
+          <div class="modal-section" v-if="modalTrack.description">
+            <h4>Description</h4>
+            <p>{{ modalTrack.description }}</p>
           </div>
         </div>
       </div>
@@ -130,74 +141,121 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useAppStore } from '@/stores/app'
-import { tracks } from '@/data'
+import { musicService, type MusicItem } from '@/api/musicService'
 
 const store = useAppStore()
 
-type Track = typeof tracks[0]
-
-const current = ref<Track>(tracks[0])
+const tracks = ref<MusicItem[]>([])
+const loading = ref(true)
+const current = ref<MusicItem | null>(null)
 const playing = ref(false)
-const progress = ref(18)
-const currentTime = ref('0:42')
-const modalTrack = ref<Track | null>(null)
+const progress = ref(0)
+const currentTime = ref('0:00')
+const durationLabel = ref('0:00')
+const modalTrack = ref<MusicItem | null>(null)
+const audioEl = ref<HTMLAudioElement | null>(null)
 
-let timer: ReturnType<typeof setInterval> | null = null
+const palettes = [
+  ['#1a1a3e', '#5b9cf6'],
+  ['#1a1228', '#a78bfa'],
+  ['#1a0a2e', '#f472b6'],
+  ['#0a1a0a', '#34d399'],
+  ['#1a1500', '#fb923c'],
+  ['#050a1a', '#7dd3fc'],
+]
 
-function selectTrack(t: Track) {
+function paletteFor(id: number) {
+  return palettes[id % palettes.length]
+}
+
+function coverStyle(t?: MusicItem | null) {
+  if (!t) return ''
+  if (t.coverImageUrl) {
+    return `background-image:url(${t.coverImageUrl});background-size:cover;background-position:center;`
+  }
+  const [a, b] = paletteFor(t.id)
+  return `background:linear-gradient(135deg,${a},${b})`
+}
+
+function formatTime(sec: number) {
+  if (!isFinite(sec) || sec < 0) return '0:00'
+  const m = Math.floor(sec / 60)
+  const s = Math.floor(sec % 60)
+  return `${m}:${String(s).padStart(2, '0')}`
+}
+
+function selectTrack(t: MusicItem) {
+  if (current.value?.id === t.id) {
+    togglePlay()
+    return
+  }
   current.value = t
-  playing.value = true
   progress.value = 0
   currentTime.value = '0:00'
-  startTimer()
+  durationLabel.value = '0:00'
+  nextTick(() => audioEl.value?.play().catch(() => {}))
 }
 
 function togglePlay() {
-  playing.value = !playing.value
-  if (playing.value) startTimer()
-  else stopTimer()
+  const audio = audioEl.value
+  if (!audio) return
+  if (audio.paused) audio.play().catch(() => {})
+  else audio.pause()
 }
 
-function startTimer() {
-  stopTimer()
-  timer = setInterval(() => {
-    if (!playing.value) return
-    progress.value = Math.min(progress.value + .12, 99)
-    const total = parseDuration(current.value.duration)
-    const secs = Math.floor(progress.value / 100 * total)
-    currentTime.value = `${Math.floor(secs/60)}:${String(secs%60).padStart(2,'0')}`
-  }, 300)
+function onTimeUpdate() {
+  const audio = audioEl.value
+  if (!audio || !audio.duration) return
+  progress.value = (audio.currentTime / audio.duration) * 100
+  currentTime.value = formatTime(audio.currentTime)
 }
 
-function stopTimer() { if (timer) { clearInterval(timer); timer = null } }
-
-function parseDuration(d: string) {
-  const [m, s] = d.split(':').map(Number)
-  return m * 60 + s
+function onLoadedMetadata() {
+  const audio = audioEl.value
+  if (!audio) return
+  durationLabel.value = formatTime(audio.duration)
 }
 
 function seekProgress(e: MouseEvent) {
+  const audio = audioEl.value
+  if (!audio || !audio.duration) return
   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-  progress.value = Math.max(0, Math.min(((e.clientX - rect.left) / rect.width) * 100, 99))
+  const ratio = Math.max(0, Math.min((e.clientX - rect.left) / rect.width, 1))
+  audio.currentTime = ratio * audio.duration
 }
 
 function prevTrack() {
-  const i = tracks.findIndex(t => t.id === current.value.id)
-  selectTrack(tracks[(i - 1 + tracks.length) % tracks.length])
+  if (!current.value || tracks.value.length < 2) return
+  const i = tracks.value.findIndex(t => t.id === current.value!.id)
+  selectTrack(tracks.value[(i - 1 + tracks.value.length) % tracks.value.length])
 }
 
 function nextTrack() {
-  const i = tracks.findIndex(t => t.id === current.value.id)
-  selectTrack(tracks[(i + 1) % tracks.length])
+  if (!current.value || tracks.value.length < 2) return
+  const i = tracks.value.findIndex(t => t.id === current.value!.id)
+  selectTrack(tracks.value[(i + 1) % tracks.value.length])
 }
 
-function openModal(t: Track) { modalTrack.value = t }
+function openModal(t: MusicItem | null) {
+  if (t) modalTrack.value = t
+}
 
-onMounted(() => startTimer())
-onUnmounted(() => stopTimer())
+async function loadTracks() {
+  loading.value = true
+  try {
+    tracks.value = await musicService.list()
+    current.value = tracks.value[0] ?? null
+  } catch {
+    tracks.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(loadTracks)
 </script>
 
 <style scoped>
@@ -214,6 +272,11 @@ onUnmounted(() => stopTimer())
 .upload-btn:hover {
   background: rgba(91,156,246,.2); border-color: rgba(91,156,246,.55);
   transform: translateY(-1px); box-shadow: 0 6px 20px rgba(91,156,246,.2);
+}
+
+.music-state {
+  padding: 60px 0; text-align: center;
+  font-size: 14px; color: var(--text-3);
 }
 
 .music-layout { display: grid; grid-template-columns: 1fr 360px; gap: 32px; align-items: start; }
@@ -296,7 +359,7 @@ onUnmounted(() => stopTimer())
   position: relative; aspect-ratio: 1;
   display: flex; align-items: center; justify-content: center;
 }
-.np-emoji { font-size: 72px; filter: drop-shadow(0 0 30px rgba(0,0,0,.5)); animation: float 3s ease-in-out infinite; }
+.np-icon { position: relative; z-index: 1; filter: drop-shadow(0 0 30px rgba(0,0,0,.5)); animation: float 3s ease-in-out infinite; }
 .np-overlay { position: absolute; inset: 0; background: linear-gradient(to bottom, transparent 50%, var(--bg-3)); }
 
 .np-info { padding: 20px 24px 28px; }
@@ -305,6 +368,8 @@ onUnmounted(() => stopTimer())
 }
 .np-track { font-family: 'Space Grotesk',sans-serif; font-size: 20px; font-weight: 700; margin-bottom: 4px; letter-spacing: -.01em; }
 .np-album { font-size: 12px; color: var(--text-3); margin-bottom: 16px; }
+
+.np-audio { display: none; }
 
 /* Waveform */
 .waveform { display: flex; align-items: center; gap: 2px; height: 36px; margin-bottom: 16px; }
@@ -370,7 +435,7 @@ onUnmounted(() => stopTimer())
   position: relative; height: 260px;
   display: flex; align-items: center; justify-content: center;
 }
-.modal-art-emoji { font-size: 80px; z-index: 1; filter: drop-shadow(0 0 40px rgba(0,0,0,.5)); }
+.modal-art-icon { z-index: 1; filter: drop-shadow(0 0 40px rgba(0,0,0,.5)); }
 .modal-art-overlay { position: absolute; inset: 0; background: linear-gradient(to bottom, transparent 40%, var(--bg-3)); }
 .modal-art-meta {
   position: absolute; bottom: 16px; left: 20px;
@@ -383,13 +448,6 @@ onUnmounted(() => stopTimer())
 .modal-section { margin-bottom: 24px; }
 .modal-section h4 { font-size: 11px; letter-spacing: .15em; text-transform: uppercase; color: var(--text-3); margin-bottom: 10px; }
 .modal-section p { font-size: 14px; color: var(--text-2); line-height: 1.7; }
-.modal-lyrics {
-  font-family: 'SF Mono','Fira Code',monospace;
-  font-size: 13px; color: var(--text-2);
-  line-height: 1.9; white-space: pre-line;
-  border-left: 2px solid rgba(167,139,250,.3);
-  padding-left: 16px;
-}
 
 @media (max-width: 1024px) {
   .music-layout { grid-template-columns: 1fr; }

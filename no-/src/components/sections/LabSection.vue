@@ -1,62 +1,68 @@
 <template>
   <section id="lab" class="lab-section">
-    <div class="lab-glow-bg" />
-
     <div class="section-wrap">
       <div class="section-header reveal">
-        <p class="s-label">Experimental Zone</p>
-        <h2 class="s-title">Lab</h2>
-        <p class="s-sub">Prototypes, demos, and ideas in motion — where curiosity runs the build system.</p>
+        <p class="s-label">AI Terminal</p>
+        <h2 class="s-title">Chat</h2>
+        <p class="s-sub">Ask me anything — projects, skills, music, or just say hi.</p>
       </div>
 
-      <div class="lab-grid stagger">
-        <div
-          v-for="item in labItems" :key="item.id"
-          :class="['lab-card', `reveal`, { 'status-active': item.status === 'active' }]"
-          @mouseenter="hovered = item.id"
-          @mouseleave="hovered = null"
-        >
-          <div class="lab-card-glow" :class="`gc-${item.id}`" />
+      <!-- macOS terminal window -->
+      <div class="terminal reveal">
 
-          <div class="lab-icon-wrap">
-            <span class="lab-icon">{{ item.icon }}</span>
-          </div>
-
-          <div class="lab-content">
-            <h3 class="lab-title">{{ item.title }}</h3>
-            <p class="lab-desc">{{ item.desc }}</p>
-
-            <div class="lab-tags">
-              <span v-for="t in item.tags" :key="t" class="tech-badge">{{ t }}</span>
-            </div>
-          </div>
-
-          <div class="lab-footer">
-            <div :class="['lab-status', `ls-${item.status}`]">
-              <span class="ls-dot" />
-              {{ statusLabel(item.status) }}
-            </div>
-            <span class="lab-arrow">↗</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Terminal-ish footer -->
-      <div class="lab-terminal reveal">
-        <div class="term-bar">
+        <!-- Title bar -->
+        <div class="term-titlebar">
           <div class="term-dots">
-            <span style="background:#ff5f57" />
-            <span style="background:#ffbd2e" />
-            <span style="background:#28c840" />
+            <span class="dot dot-red" />
+            <span class="dot dot-yellow" />
+            <span class="dot dot-green" />
           </div>
-          <span class="term-title">daean-lab ~ /experiments</span>
+          <span class="term-title-label">daean@studio — chat — 80×24</span>
+          <div style="flex:1" />
         </div>
-        <div class="term-body">
-          <p><span class="term-prompt">$</span> ls -la ./active</p>
-          <p class="term-output">neural-style-engine &nbsp; particle-field &nbsp; procedural-city</p>
-          <p><span class="term-prompt">$</span> git status</p>
-          <p class="term-output">On branch <span class="term-green">main</span> · 3 experiments in progress · next release: when it's done</p>
-          <p class="term-cursor"><span class="term-prompt">$</span> <span class="blink">█</span></p>
+
+        <!-- Output area -->
+        <div class="term-body" ref="bodyEl">
+          <div class="term-line">
+            <span class="term-sys">daean-studio AI terminal v1.0.0</span>
+          </div>
+          <div class="term-line">
+            <span class="term-sys">Type a message and press Enter ↵</span>
+          </div>
+          <div class="term-line">&nbsp;</div>
+
+          <div v-for="(item, i) in renderLines" :key="i" class="term-line">
+            <template v-if="item.type === 'user'">
+              <span class="term-prompt">daean@studio:~$&nbsp;</span>
+              <span class="term-user">{{ item.text }}</span>
+            </template>
+            <template v-else>
+              <span class="term-bot-pfx">{{ item.first ? '▶' : '&nbsp;' }}&nbsp;</span>
+              <span class="term-bot">{{ item.text }}</span>
+            </template>
+          </div>
+
+          <!-- Typing dots -->
+          <div v-if="loading" class="term-line">
+            <span class="term-bot-pfx">▶&nbsp;</span>
+            <span class="typing-dots">
+              <span /><span /><span />
+            </span>
+          </div>
+        </div>
+
+        <!-- Input line -->
+        <div class="term-input-row" @click="inputEl?.focus()">
+          <span class="term-prompt">daean@studio:~$&nbsp;</span>
+          <input
+            ref="inputEl"
+            v-model="input"
+            class="term-input"
+            type="text"
+            placeholder="ask something…"
+            :disabled="loading"
+            @keydown.enter="send"
+          />
         </div>
       </div>
     </div>
@@ -64,130 +70,172 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { labItems } from '@/data'
+import { ref, computed, nextTick, onMounted } from 'vue'
+import client from '@/api/client'
 
-const hovered = ref<number | null>(null)
-
-function statusLabel(s: string) {
-  return { active: 'Active', wip: 'In Progress', concept: 'Concept' }[s] ?? s
+interface Message {
+  role: 'user' | 'bot'
+  text: string
 }
+
+interface RenderLine {
+  type: 'user' | 'bot'
+  text: string
+  first: boolean
+}
+
+const messages = ref<Message[]>([])
+
+const renderLines = computed<RenderLine[]>(() => {
+  const lines: RenderLine[] = []
+  for (const msg of messages.value) {
+    if (msg.role === 'user') {
+      lines.push({ type: 'user', text: msg.text, first: true })
+    } else {
+      msg.text.split('\n').forEach((line, j) =>
+        lines.push({ type: 'bot', text: line, first: j === 0 })
+      )
+    }
+  }
+  return lines
+})
+
+const input    = ref('')
+const loading  = ref(false)
+const bodyEl   = ref<HTMLElement | null>(null)
+const inputEl  = ref<HTMLInputElement | null>(null)
+
+async function scrollBottom() {
+  await nextTick()
+  if (bodyEl.value) bodyEl.value.scrollTop = bodyEl.value.scrollHeight
+}
+
+async function send() {
+  const text = input.value.trim()
+  if (!text || loading.value) return
+
+  messages.value.push({ role: 'user', text })
+  input.value = ''
+  loading.value = true
+  await scrollBottom()
+
+  try {
+    const res = await client.post<{ response: string }>('/api/chat', { message: text })
+    messages.value.push({ role: 'bot', text: res.data.response })
+  } catch (err: any) {
+    const status = err?.response?.status
+    const msg =
+      status === 401 ? 'Authentication required. Please sign in first.' :
+      status === 404 ? 'Chat endpoint not configured yet.' :
+      'Connection error. Please try again.'
+    messages.value.push({ role: 'bot', text: msg })
+  } finally {
+    loading.value = false
+    await scrollBottom()
+    inputEl.value?.focus()
+  }
+}
+
+onMounted(() => inputEl.value?.focus())
 </script>
 
 <style scoped>
 .lab-section {
   background: var(--bg);
-  position: relative; overflow: hidden;
+  position: relative;
 }
+.section-header { margin-bottom: 48px; }
 
-.lab-glow-bg {
-  position: absolute; top: 50%; left: 50%;
-  width: 900px; height: 600px;
-  transform: translate(-50%,-50%);
-  background: radial-gradient(ellipse, rgba(167,139,250,.025) 0%, transparent 70%);
-  pointer-events: none;
-}
-
-.section-header { margin-bottom: 56px; }
-
-.lab-grid {
-  display: grid; grid-template-columns: repeat(3,1fr);
-  gap: 18px; margin-bottom: 40px;
-}
-
-.lab-card {
-  background: var(--bg-3);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--r);
-  padding: 28px;
-  cursor: default;
-  transition: all .4s cubic-bezier(.4,0,.2,1);
-  position: relative; overflow: hidden;
-  display: flex; flex-direction: column; gap: 14px;
-}
-.lab-card:hover {
-  border-color: rgba(167,139,250,.38);
-  transform: translateY(-5px);
-  box-shadow: 0 20px 60px rgba(0,0,0,.4);
-}
-
-.lab-card-glow {
-  position: absolute; inset: 0;
-  background: var(--gradient);
-  opacity: 0;
-  transition: opacity .4s ease;
-  border-radius: inherit;
-}
-.lab-card:hover .lab-card-glow { opacity: .04; }
-
-.lab-icon-wrap { position: relative; z-index: 1; }
-.lab-icon { font-size: 34px; display: block; transition: transform .3s ease; }
-.lab-card:hover .lab-icon { transform: scale(1.15) rotate(-5deg); }
-
-.lab-content { position: relative; z-index: 1; flex: 1; }
-.lab-title {
-  font-family: 'Space Grotesk',sans-serif;
-  font-size: 17px; font-weight: 700; margin-bottom: 8px; letter-spacing: -.01em;
-}
-.lab-desc { font-size: 13px; color: var(--text-2); line-height: 1.65; margin-bottom: 12px; }
-.lab-tags { display: flex; flex-wrap: wrap; gap: 6px; }
-
-.lab-footer {
-  position: relative; z-index: 1;
-  display: flex; justify-content: space-between; align-items: center;
-  padding-top: 4px;
-}
-
-.lab-status {
-  display: flex; align-items: center; gap: 6px;
-  font-size: 11px; font-weight: 600; letter-spacing: .04em;
-}
-.ls-dot {
-  width: 6px; height: 6px; border-radius: 50%;
-  animation: glowPulse 2s ease-in-out infinite;
-}
-.ls-active { color: #34d399; }
-.ls-active .ls-dot { background: #34d399; color: #34d399; }
-.ls-wip { color: #fb923c; }
-.ls-wip .ls-dot { background: #fb923c; color: #fb923c; }
-.ls-concept { color: var(--text-3); }
-.ls-concept .ls-dot { background: var(--text-3); color: var(--text-3); }
-
-.lab-arrow {
-  font-size: 16px; color: var(--text-3);
-  opacity: 0; transform: translateX(-4px);
-  transition: all .25s ease;
-}
-.lab-card:hover .lab-arrow { opacity: 1; transform: none; color: var(--purple); }
-
-/* Terminal */
-.lab-terminal {
-  background: #0d0d0d;
-  border: 1px solid rgba(255,255,255,.08);
-  border-radius: var(--r);
+/* ─── Terminal window ──────────────────────────── */
+.terminal {
+  background: #0d1117;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 12px;
   overflow: hidden;
+  box-shadow: 0 32px 80px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.04);
 }
-.term-bar {
-  height: 34px; background: rgba(255,255,255,.04);
-  border-bottom: 1px solid rgba(255,255,255,.06);
-  display: flex; align-items: center; gap: 12px;
-  padding: 0 14px;
-}
-.term-dots { display: flex; gap: 6px; }
-.term-dots span { width: 10px; height: 10px; border-radius: 50%; }
-.term-title { font-size: 12px; color: var(--text-3); }
 
-.term-body {
-  padding: 20px 24px;
+/* Title bar */
+.term-titlebar {
+  height: 40px;
+  background: #161b22;
+  border-bottom: 1px solid rgba(255,255,255,.07);
+  display: flex; align-items: center;
+  padding: 0 16px; gap: 14px;
+  user-select: none;
+}
+.term-dots { display: flex; gap: 7px; }
+.dot {
+  width: 12px; height: 12px; border-radius: 50%;
+}
+.dot-red    { background: #ff5f57; }
+.dot-yellow { background: #ffbd2e; }
+.dot-green  { background: #28c840; }
+.term-title-label {
   font-family: 'SF Mono','Fira Code',monospace;
-  font-size: 12px; line-height: 1.9;
-  display: flex; flex-direction: column; gap: 2px;
+  font-size: 12px; color: rgba(255,255,255,.3);
+  letter-spacing: .04em;
 }
-.term-prompt { color: var(--blue); margin-right: 8px; }
-.term-output { color: var(--text-3); padding-left: 16px; }
-.term-green { color: #34d399; }
-.blink { animation: pulse 1s step-end infinite; }
 
-@media (max-width: 900px) { .lab-grid { grid-template-columns: repeat(2,1fr); } }
-@media (max-width: 560px) { .lab-grid { grid-template-columns: 1fr; } }
+/* Output body */
+.term-body {
+  padding: 20px 24px 12px;
+  min-height: 340px;
+  max-height: 440px;
+  overflow-y: auto;
+  font-family: 'SF Mono','Fira Code','Menlo',monospace;
+  font-size: 13px;
+  line-height: 1.8;
+  display: flex; flex-direction: column; gap: 1px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,.1) transparent;
+}
+.term-body::-webkit-scrollbar { width: 4px; }
+.term-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 2px; }
+
+/* Lines */
+.term-line { display: flex; align-items: baseline; word-break: break-word; }
+.term-sys  { color: rgba(255,255,255,.2); font-style: italic; }
+.term-prompt { color: #28c840; white-space: nowrap; flex-shrink: 0; }
+.term-user  { color: #f0f6fc; }
+.term-bot-pfx { color: #a78bfa; white-space: nowrap; flex-shrink: 0; }
+.term-bot   { color: #8b949e; }
+
+/* Typing animation */
+.typing-dots { display: flex; align-items: center; gap: 4px; padding: 2px 0; }
+.typing-dots span {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: #a78bfa; opacity: .4;
+  animation: typingPulse 1.2s ease-in-out infinite;
+}
+.typing-dots span:nth-child(2) { animation-delay: .2s; }
+.typing-dots span:nth-child(3) { animation-delay: .4s; }
+@keyframes typingPulse {
+  0%, 100% { opacity: .2; transform: translateY(0); }
+  50%       { opacity: .9; transform: translateY(-3px); }
+}
+
+/* Input line */
+.term-input-row {
+  display: flex; align-items: center;
+  padding: 10px 24px 18px;
+  border-top: 1px solid rgba(255,255,255,.05);
+  cursor: text;
+}
+.term-input {
+  flex: 1;
+  background: transparent;
+  border: none; outline: none;
+  font-family: 'SF Mono','Fira Code','Menlo',monospace;
+  font-size: 13px; color: #f0f6fc;
+  caret-color: #28c840;
+}
+.term-input::placeholder { color: rgba(255,255,255,.15); }
+.term-input:disabled { opacity: .5; }
+
+@media (max-width: 600px) {
+  .term-body { min-height: 260px; max-height: 340px; font-size: 12px; padding: 16px 16px 10px; }
+  .term-input-row { padding: 8px 16px 14px; }
+  .term-input { font-size: 12px; }
+}
 </style>

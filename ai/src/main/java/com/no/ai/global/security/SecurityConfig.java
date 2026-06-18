@@ -6,6 +6,7 @@ import com.no.ai.global.security.jwt.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -38,7 +39,8 @@ public class SecurityConfig {
             "/api/test-alert",
             "/test.html",
             "/swagger-ui/**",
-            "/v3/api-docs/**"};
+            "/v3/api-docs/**",
+            "/uploads/**"};
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -63,6 +65,8 @@ public class SecurityConfig {
         //권한 규칙 작성
         http.authorizeHttpRequests(authorize -> authorize
                 .requestMatchers(AUTH_WHITELIST).permitAll()
+                // 메인 페이지에서 비로그인 사용자도 음악 목록을 볼 수 있도록 허용
+                .requestMatchers(HttpMethod.GET, "/music", "/music/**").permitAll()
                 //@PreAuthorization 사용 -> 모든 경로에 대한 인증처리는 Pass
                 .anyRequest().authenticated()
 //                .anyRequest().permitAll()

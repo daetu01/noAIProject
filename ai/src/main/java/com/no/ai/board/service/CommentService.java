@@ -9,6 +9,7 @@ import com.no.ai.global.exception.ForbiddenException;
 import com.no.ai.global.security.details.CustomUserDetails;
 import com.no.ai.user.domain.UserEntity;
 import com.no.ai.user.repository.UserRepository;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
@@ -23,6 +24,7 @@ public class CommentService {
     private final BoardRepository boardRepository;
     private final ModelMapper mapper;
 
+    @Transactional
     public void create(CommentDto.CREATE dto, CustomUserDetails userDetails) {
         UserEntity user = userRepository.findByEmail(userDetails.getUser().getEmail())
                 .orElseThrow();
@@ -50,6 +52,7 @@ public class CommentService {
                 .toList();
     }
 
+    @Transactional
     public void delete(Long commentId, CustomUserDetails userDetails) {
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow();
@@ -60,6 +63,7 @@ public class CommentService {
         commentRepository.delete(comment);
     }
 
+    @Transactional
     public CommentDto.GET put(Long commentId, CommentDto.PUT dto, CustomUserDetails userDetails) {
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow();
@@ -69,8 +73,6 @@ public class CommentService {
         }
 
         comment.setContent(dto.getContent());
-
-        commentRepository.save(comment);
 
         return CommentDto.GET.builder()
                 .content(comment.getContent())

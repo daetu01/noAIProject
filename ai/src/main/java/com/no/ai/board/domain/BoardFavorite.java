@@ -22,7 +22,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Builder
 @AllArgsConstructor
-public class Favorite {
+public class BoardFavorite {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

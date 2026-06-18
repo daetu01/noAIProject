@@ -62,7 +62,7 @@ const links = [
   { id: 'music',    label: 'Music' },
   { id: 'design',   label: 'Design' },
   { id: 'games',    label: 'Games' },
-  { id: 'lab',      label: 'Lab' },
+  { id: 'lab',      label: 'Chat' },
   { id: 'about',    label: 'About' },
 ]
 

@@ -70,6 +70,7 @@ export default defineConfig({
       '/favorite': 'http://localhost:8080',
       '/comment': 'http://localhost:8080',
       '/music': 'http://localhost:8080',
+      '/uploads': 'http://localhost:8080',
     },
   },
 })

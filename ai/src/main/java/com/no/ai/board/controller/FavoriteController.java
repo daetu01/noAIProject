@@ -12,8 +12,13 @@ import org.springframework.web.bind.annotation.*;
 public class FavoriteController {
     private final FavoriteService favoriteService;
 
-    @PostMapping("/{id}")
-    public void favorite(@PathVariable Long id, @AuthenticationPrincipal CustomUserDetails userDetails) {
-        favoriteService.favorite(id, userDetails.getUser().getEmail());
+    @PostMapping("/board/{id}")
+    public void boardFavorite(@PathVariable Long id, @AuthenticationPrincipal CustomUserDetails userDetails) {
+        favoriteService.boardFavorite(id, userDetails.getUser().getEmail());
+    }
+
+    @PostMapping("/music/{id}")
+    public void musicFavorite(@PathVariable Long id, @AuthenticationPrincipal CustomUserDetails userDetails) {
+        favoriteService.musicFavorite(id, userDetails.getUser().getEmail());
     }
 }

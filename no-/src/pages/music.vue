@@ -1,10 +1,26 @@
 <script lang="ts" setup>
-import { ref } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import { musicService } from '@/api/musicService'
+import { musicService, type MusicItem } from '@/api/musicService'
 import { useAppStore } from '@/stores/app'
 
 const store = useAppStore()
+
+const cursor    = ref<HTMLElement | null>(null)
+const ring      = ref<HTMLElement | null>(null)
+const cursorBig = ref(false)
+let rx = 0, ry = 0, tx = 0, ty = 0
+let raf = 0
+
+function onMouseMove(e: MouseEvent) {
+  tx = e.clientX; ty = e.clientY
+  if (cursor.value) { cursor.value.style.left = `${tx}px`; cursor.value.style.top = `${ty}px` }
+}
+function animateCursor() {
+  rx += (tx - rx) * .13; ry += (ty - ry) * .13
+  if (ring.value) { ring.value.style.left = `${rx}px`; ring.value.style.top = `${ry}px` }
+  raf = requestAnimationFrame(animateCursor)
+}
 
 const title = ref('')
 const artist = ref('')
@@ -17,6 +33,12 @@ const coverPreviewUrl = ref<string | null>(null)
 const submitting = ref(false)
 const successMsg = ref('')
 const errorMsg = ref('')
+
+const musicList = ref<MusicItem[]>([])
+const loadingList = ref(false)
+
+const editingId = ref<number | null>(null)
+const editForm = ref({ title: '', artist: '', description: '', genre: '' })
 
 const GENRES = ['Pop', 'Rock', 'Hip-Hop', 'R&B', 'Jazz', 'Classical', 'Electronic', 'Lo-fi', 'Indie', 'Other']
 
@@ -64,6 +86,7 @@ async function submit() {
     })
     successMsg.value = `"${title.value}" 업로드 완료!`
     reset()
+    await loadMusicList()
   } catch {
     errorMsg.value = '업로드에 실패했습니다. 다시 시도해주세요.'
   } finally {
@@ -71,12 +94,103 @@ async function submit() {
   }
 }
 
+async function loadMusicList() {
+  loadingList.value = true
+  try {
+    musicList.value = await musicService.list()
+  } catch {
+    musicList.value = []
+  } finally {
+    loadingList.value = false
+  }
+}
+
+async function onPlay(m: MusicItem) {
+  try {
+    await musicService.increasePlay(m.id)
+    m.play += 1
+  } catch {
+    // ignore
+  }
+}
+
+async function toggleLike(m: MusicItem) {
+  try {
+    await musicService.toggleLike(m.id)
+    m.liked = !m.liked
+    m.likedCount += m.liked ? 1 : -1
+  } catch {
+    // ignore
+  }
+}
+
+function startEdit(m: MusicItem) {
+  editingId.value = m.id
+  editForm.value = {
+    title: m.title,
+    artist: m.artist,
+    description: m.description,
+    genre: m.genre,
+  }
+}
+
+function cancelEdit() {
+  editingId.value = null
+}
+
+async function saveEdit(m: MusicItem) {
+  const title = editForm.value.title.trim()
+  const artist = editForm.value.artist.trim()
+  if (!title || !artist || !editForm.value.genre) return
+
+  try {
+    await musicService.update({
+      id: m.id,
+      title,
+      artist,
+      description: editForm.value.description.trim(),
+      genre: editForm.value.genre,
+      audioUrl: m.audioUrl,
+      coverImageUrl: m.coverImageUrl,
+    })
+    m.title = title
+    m.artist = artist
+    m.description = editForm.value.description.trim()
+    m.genre = editForm.value.genre
+    editingId.value = null
+  } catch {
+    // ignore
+  }
+}
+
+async function removeTrack(id: number) {
+  if (!window.confirm('이 트랙을 삭제하시겠습니까?')) return
+  try {
+    await musicService.remove(id)
+    musicList.value = musicList.value.filter(m => m.id !== id)
+  } catch {
+    // ignore
+  }
+}
+
 const canSubmit = () =>
   title.value.trim() && artist.value.trim() && genre.value && audioFile.value && !submitting.value
+
+onMounted(() => {
+  window.addEventListener('mousemove', onMouseMove, { passive: true })
+  animateCursor()
+  loadMusicList()
+})
+onUnmounted(() => {
+  window.removeEventListener('mousemove', onMouseMove)
+  cancelAnimationFrame(raf)
+})
 </script>
 
 <template>
   <div class="music-page">
+    <div class="ds-cursor" ref="cursor" :class="{ big: cursorBig }" />
+    <div class="ds-cursor-ring" ref="ring" />
 
     <!-- ── Header ── -->
     <header class="music-header">
@@ -92,112 +206,195 @@ const canSubmit = () =>
 
     <!-- ── Body ── -->
     <div class="page-inner">
-      <div class="page-title-block">
-        <p class="eyebrow">UPLOAD</p>
-        <h1 class="page-title">새 트랙 등록</h1>
-        <p class="page-sub">오디오 파일과 메타데이터를 입력해 트랙을 등록하세요.</p>
-      </div>
+      <template v-if="store.isAdmin">
+        <div class="page-title-block">
+          <p class="eyebrow">UPLOAD</p>
+          <h1 class="page-title">새 트랙 등록</h1>
+          <p class="page-sub">오디오 파일과 메타데이터를 입력해 트랙을 등록하세요.</p>
+        </div>
 
-      <div v-if="successMsg" class="msg-bar success">
-        <v-icon size="16" class="mr-1">mdi-check-circle-outline</v-icon>
-        {{ successMsg }}
-      </div>
-      <div v-if="errorMsg" class="msg-bar error">
-        <v-icon size="16" class="mr-1">mdi-alert-circle-outline</v-icon>
-        {{ errorMsg }}
-      </div>
+        <div v-if="successMsg" class="msg-bar success">
+          <v-icon size="16" class="mr-1">mdi-check-circle-outline</v-icon>
+          {{ successMsg }}
+        </div>
+        <div v-if="errorMsg" class="msg-bar error">
+          <v-icon size="16" class="mr-1">mdi-alert-circle-outline</v-icon>
+          {{ errorMsg }}
+        </div>
 
-      <form class="upload-form" @submit.prevent="submit">
+        <form class="upload-form" @submit.prevent="submit">
 
-        <!-- ── 커버 + 메타 ── -->
-        <div class="form-top">
+          <!-- ── 커버 + 메타 ── -->
+          <div class="form-top">
 
-          <!-- 커버 이미지 -->
-          <div class="cover-upload" :class="{ 'has-cover': coverPreviewUrl }">
-            <img v-if="coverPreviewUrl" :src="coverPreviewUrl" alt="cover" class="cover-preview" />
-            <div v-else class="cover-placeholder">
-              <v-icon size="32" color="rgba(255,255,255,.18)">mdi-image-outline</v-icon>
-              <span>커버 이미지</span>
-              <span class="cover-hint">선택 사항</span>
+            <!-- 커버 이미지 -->
+            <div class="cover-upload" :class="{ 'has-cover': coverPreviewUrl }">
+              <img v-if="coverPreviewUrl" :src="coverPreviewUrl" alt="cover" class="cover-preview" />
+              <div v-else class="cover-placeholder">
+                <v-icon size="32" color="rgba(255,255,255,.18)">mdi-image-outline</v-icon>
+                <span>커버 이미지</span>
+                <span class="cover-hint">선택 사항</span>
+              </div>
+              <label class="cover-label">
+                <input type="file" accept="image/*" class="hidden-input" @change="onCoverChange" />
+              </label>
+              <button v-if="coverPreviewUrl" type="button" class="cover-remove" @click="removeCover">
+                <v-icon size="14">mdi-close</v-icon>
+              </button>
             </div>
-            <label class="cover-label">
-              <input type="file" accept="image/*" class="hidden-input" @change="onCoverChange" />
-            </label>
-            <button v-if="coverPreviewUrl" type="button" class="cover-remove" @click="removeCover">
-              <v-icon size="14">mdi-close</v-icon>
-            </button>
+
+            <!-- 메타데이터 -->
+            <div class="meta-fields">
+              <div class="field-group">
+                <label class="field-label">제목 <span class="required">*</span></label>
+                <input v-model="title" class="field-input" type="text" placeholder="트랙 제목" maxlength="100" />
+              </div>
+              <div class="field-group">
+                <label class="field-label">아티스트 <span class="required">*</span></label>
+                <input v-model="artist" class="field-input" type="text" placeholder="아티스트명" maxlength="100" />
+              </div>
+              <div class="field-group">
+                <label class="field-label">장르 <span class="required">*</span></label>
+                <div class="genre-grid">
+                  <button
+                    v-for="g in GENRES"
+                    :key="g"
+                    type="button"
+                    class="genre-chip"
+                    :class="{ active: genre === g }"
+                    @click="genre = g"
+                  >{{ g }}</button>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <!-- 메타데이터 -->
-          <div class="meta-fields">
-            <div class="field-group">
-              <label class="field-label">제목 <span class="required">*</span></label>
-              <input v-model="title" class="field-input" type="text" placeholder="트랙 제목" maxlength="100" />
+          <!-- 설명 -->
+          <div class="field-group">
+            <label class="field-label">설명</label>
+            <textarea
+              v-model="description"
+              class="field-input field-textarea"
+              placeholder="트랙에 대한 설명을 입력하세요..."
+              rows="3"
+              maxlength="500"
+            />
+            <span class="char-count">{{ description.length }} / 500</span>
+          </div>
+
+          <!-- 오디오 업로드 -->
+          <div class="field-group">
+            <label class="field-label">오디오 파일 <span class="required">*</span></label>
+            <label class="audio-drop" :class="{ 'has-file': audioFile }">
+              <input type="file" accept="audio/*" class="hidden-input" @change="onAudioChange" />
+              <template v-if="!audioFile">
+                <v-icon size="28" color="rgba(255,255,255,.25)">mdi-music-note-plus</v-icon>
+                <span class="drop-text">클릭하여 오디오 파일 선택</span>
+                <span class="drop-hint">MP3, WAV, FLAC, AAC 등</span>
+              </template>
+              <template v-else>
+                <v-icon size="22" color="#5b9cf6">mdi-music-circle</v-icon>
+                <span class="drop-text file-name">{{ audioFile.name }}</span>
+                <span class="drop-hint">{{ (audioFile.size / 1024 / 1024).toFixed(1) }} MB</span>
+              </template>
+            </label>
+
+            <!-- 오디오 미리듣기 -->
+            <audio v-if="audioPreviewUrl" :src="audioPreviewUrl" controls class="audio-player" />
+          </div>
+
+          <!-- 제출 -->
+          <div class="form-footer">
+            <button type="button" class="btn-ghost" @click="reset" :disabled="submitting">초기화</button>
+            <button type="submit" class="btn-pri submit-btn" :disabled="!canSubmit()">
+              <v-progress-circular v-if="submitting" indeterminate size="14" width="2" color="#fff" class="mr-1" />
+              <v-icon v-else size="14" class="mr-1">mdi-upload</v-icon>
+              {{ submitting ? '업로드 중...' : '트랙 등록' }}
+            </button>
+          </div>
+        </form>
+      </template>
+
+      <!-- ── 트랙 목록 ── -->
+      <div class="library-block">
+        <div class="library-header">
+          <div>
+            <p class="eyebrow">LIBRARY</p>
+            <h2 class="page-title library-title">전체 트랙</h2>
+          </div>
+          <span class="track-count">{{ musicList.length }}곡</span>
+        </div>
+
+        <div v-if="loadingList" class="library-state">불러오는 중...</div>
+        <div v-else-if="musicList.length === 0" class="library-state">아직 업로드된 트랙이 없습니다.</div>
+
+        <div v-else class="library-list">
+          <div v-for="m in musicList" :key="m.id" class="track-item">
+            <div class="track-main">
+              <div class="track-cover">
+                <img v-if="m.coverImageUrl" :src="m.coverImageUrl" alt="" class="track-cover-img" />
+                <div v-else class="track-cover-placeholder">
+                  <v-icon size="20" color="rgba(255,255,255,.2)">mdi-music-note</v-icon>
+                </div>
+              </div>
+
+              <!-- 일반 표시 -->
+              <div v-if="editingId !== m.id" class="track-info">
+                <p class="track-title">{{ m.title }}</p>
+                <p class="track-meta">{{ m.artist }} · {{ m.genre }}</p>
+                <p v-if="m.description" class="track-desc">{{ m.description }}</p>
+              </div>
+
+              <!-- 수정 폼 -->
+              <div v-else class="track-edit-form">
+                <input v-model="editForm.title" class="field-input edit-input" placeholder="제목" maxlength="100" />
+                <input v-model="editForm.artist" class="field-input edit-input" placeholder="아티스트" maxlength="100" />
+                <select v-model="editForm.genre" class="field-input edit-input">
+                  <option v-for="g in GENRES" :key="g" :value="g">{{ g }}</option>
+                </select>
+                <textarea
+                  v-model="editForm.description"
+                  class="field-input edit-input edit-textarea"
+                  placeholder="설명"
+                  rows="2"
+                  maxlength="500"
+                />
+              </div>
             </div>
-            <div class="field-group">
-              <label class="field-label">아티스트 <span class="required">*</span></label>
-              <input v-model="artist" class="field-input" type="text" placeholder="아티스트명" maxlength="100" />
-            </div>
-            <div class="field-group">
-              <label class="field-label">장르 <span class="required">*</span></label>
-              <div class="genre-grid">
-                <button
-                  v-for="g in GENRES"
-                  :key="g"
-                  type="button"
-                  class="genre-chip"
-                  :class="{ active: genre === g }"
-                  @click="genre = g"
-                >{{ g }}</button>
+
+            <audio :src="m.audioUrl" controls class="track-audio" @play="onPlay(m)" />
+
+            <div class="track-actions">
+              <span class="track-stat">
+                <v-icon size="14">mdi-play-circle-outline</v-icon>
+                {{ m.play }}
+              </span>
+
+              <div class="track-action-buttons">
+                <button class="track-action-btn" :class="{ liked: m.liked }" @click="toggleLike(m)">
+                  <v-icon size="15">{{ m.liked ? 'mdi-heart' : 'mdi-heart-outline' }}</v-icon>
+                  {{ m.likedCount }}
+                </button>
+
+                <template v-if="m.nickName === store.user?.nickName">
+                  <template v-if="editingId === m.id">
+                    <button class="track-action-btn save" @click="saveEdit(m)">저장</button>
+                    <button class="track-action-btn" @click="cancelEdit">취소</button>
+                  </template>
+                  <template v-else>
+                    <button class="track-action-btn" @click="startEdit(m)">
+                      <v-icon size="14">mdi-pencil-outline</v-icon> 수정
+                    </button>
+                    <button class="track-action-btn danger" @click="removeTrack(m.id)">
+                      <v-icon size="14">mdi-delete-outline</v-icon> 삭제
+                    </button>
+                  </template>
+                </template>
               </div>
             </div>
           </div>
         </div>
-
-        <!-- 설명 -->
-        <div class="field-group">
-          <label class="field-label">설명</label>
-          <textarea
-            v-model="description"
-            class="field-input field-textarea"
-            placeholder="트랙에 대한 설명을 입력하세요..."
-            rows="3"
-            maxlength="500"
-          />
-          <span class="char-count">{{ description.length }} / 500</span>
-        </div>
-
-        <!-- 오디오 업로드 -->
-        <div class="field-group">
-          <label class="field-label">오디오 파일 <span class="required">*</span></label>
-          <label class="audio-drop" :class="{ 'has-file': audioFile }">
-            <input type="file" accept="audio/*" class="hidden-input" @change="onAudioChange" />
-            <template v-if="!audioFile">
-              <v-icon size="28" color="rgba(255,255,255,.25)">mdi-music-note-plus</v-icon>
-              <span class="drop-text">클릭하여 오디오 파일 선택</span>
-              <span class="drop-hint">MP3, WAV, FLAC, AAC 등</span>
-            </template>
-            <template v-else>
-              <v-icon size="22" color="#5b9cf6">mdi-music-circle</v-icon>
-              <span class="drop-text file-name">{{ audioFile.name }}</span>
-              <span class="drop-hint">{{ (audioFile.size / 1024 / 1024).toFixed(1) }} MB</span>
-            </template>
-          </label>
-
-          <!-- 오디오 미리듣기 -->
-          <audio v-if="audioPreviewUrl" :src="audioPreviewUrl" controls class="audio-player" />
-        </div>
-
-        <!-- 제출 -->
-        <div class="form-footer">
-          <button type="button" class="btn-ghost" @click="reset" :disabled="submitting">초기화</button>
-          <button type="submit" class="btn-pri submit-btn" :disabled="!canSubmit()">
-            <v-progress-circular v-if="submitting" indeterminate size="14" width="2" color="#fff" class="mr-1" />
-            <v-icon v-else size="14" class="mr-1">mdi-upload</v-icon>
-            {{ submitting ? '업로드 중...' : '트랙 등록' }}
-          </button>
-        </div>
-      </form>
+      </div>
     </div>
   </div>
 </template>
@@ -358,6 +555,79 @@ const canSubmit = () =>
   padding: 11px 28px; font-size: 13px;
 }
 .submit-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ── Library ──────────────────────────────────────────────── */
+.library-block {
+  margin-top: 56px; padding-top: 40px;
+  border-top: 1px solid var(--glass-border);
+}
+.library-header {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  margin-bottom: 24px;
+}
+.library-title { margin-bottom: 0; }
+.track-count { font-size: 12px; color: var(--text-3); }
+
+.library-state {
+  padding: 32px 0; text-align: center;
+  font-size: 13px; color: var(--text-3);
+}
+
+.library-list { display: flex; flex-direction: column; gap: 12px; }
+
+.track-item {
+  display: flex; flex-direction: column; gap: 12px;
+  padding: 14px 16px; border-radius: var(--r-sm);
+  background: var(--glass); border: 1px solid var(--glass-border);
+}
+
+.track-main { display: flex; gap: 16px; align-items: flex-start; }
+
+.track-cover {
+  width: 52px; height: 52px; border-radius: 8px; overflow: hidden; flex-shrink: 0;
+  background: rgba(255,255,255,.04);
+}
+.track-cover-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.track-cover-placeholder {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.track-info { min-width: 0; flex: 1; }
+.track-title {
+  font-size: 14px; font-weight: 600; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.track-meta { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+.track-desc {
+  font-size: 12px; color: var(--text-3); margin-top: 4px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.track-edit-form { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.edit-input { padding: 8px 10px; font-size: 13px; }
+.edit-textarea { resize: vertical; min-height: 50px; }
+
+.track-audio { width: 100%; height: 36px; accent-color: #5b9cf6; }
+
+/* ── Actions ──────────────────────────────────────────────── */
+.track-actions { display: flex; align-items: center; justify-content: space-between; }
+.track-stat {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 12px; color: var(--text-3);
+}
+.track-action-buttons { display: flex; gap: 8px; }
+.track-action-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 5px 11px; border-radius: 100px;
+  background: rgba(255,255,255,.05); border: 1px solid var(--glass-border);
+  font: 12px var(--font); color: var(--text-2);
+  cursor: pointer; transition: all .15s;
+}
+.track-action-btn:hover { background: rgba(255,255,255,.09); color: var(--text); }
+.track-action-btn.liked { color: #f472b6; border-color: rgba(244,114,182,.35); background: rgba(244,114,182,.08); }
+.track-action-btn.danger:hover { color: #ff4757; border-color: rgba(255,71,87,.35); background: rgba(255,71,87,.08); }
+.track-action-btn.save { color: #5b9cf6; border-color: rgba(91,156,246,.35); background: rgba(91,156,246,.08); }
 
 /* ── Responsive ───────────────────────────────────────────── */
 @media (max-width: 600px) {

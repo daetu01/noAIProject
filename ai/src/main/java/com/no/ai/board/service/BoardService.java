@@ -3,14 +3,14 @@ package com.no.ai.board.service;
 import com.no.ai.board.domain.Board;
 import com.no.ai.board.dto.BoardDTO;
 import com.no.ai.board.dto.ImageDto;
+import com.no.ai.board.repository.BoardFavoriteRepository;
 import com.no.ai.board.repository.BoardRepository;
-import com.no.ai.board.repository.FavoriteRepository;
 import com.no.ai.global.exception.AuthenticationException;
-import com.no.ai.global.exception.BadRequestException;
 import com.no.ai.global.exception.NotFoundException;
 import com.no.ai.global.security.details.CustomUserDetails;
 import com.no.ai.user.domain.UserEntity;
 import com.no.ai.user.repository.UserRepository;
+import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import org.modelmapper.ModelMapper;
 
@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
 public class BoardService {
     private final BoardRepository boardRepository;
     private final UserRepository userRepository;
-    private final FavoriteRepository favoriteRepository;
+    private final BoardFavoriteRepository boardFavoriteRepository;
     private final ModelMapper modelMapper;
 
     public List<BoardDTO.Get> read(CustomUserDetails userDetails) {
@@ -40,7 +40,7 @@ public class BoardService {
 
         UserEntity user = userRepository.findById(userDetails.getUser().getUserId())
                 .orElseThrow();
-        Set<Long> favoriteBoardIds = favoriteRepository.findByUser(user).stream()
+        Set<Long> favoriteBoardIds = boardFavoriteRepository.findByUser(user).stream()
                 .map(f -> f.getBoard().getId())
                 .collect(Collectors.toSet());
 
@@ -61,6 +61,7 @@ public class BoardService {
                 .toList();
     }
 
+    @Transactional
     public Board create(BoardDTO.Post dto, CustomUserDetails userDetails) {
         Board board = Board.builder()
                 .title(dto.getTitle())
@@ -72,6 +73,7 @@ public class BoardService {
         return boardRepository.save(board);
     }
 
+    @Transactional
     public void update(BoardDTO.Put dto, CustomUserDetails userDetails) {
         Board board = boardRepository.findById(dto.getId())
                         .orElseThrow(() -> new NotFoundException("해당 게시글이 없습니다."));
@@ -81,10 +83,9 @@ public class BoardService {
         }
 
         board.update(dto.getTitle(), dto.getContent());
-
-        boardRepository.save(board);
     }
 
+    @Transactional
     public void delete(Long id, @AuthenticationPrincipal CustomUserDetails userDetails) {
         Board board = boardRepository.findById(id)
                         .orElseThrow(() -> new NotFoundException("해당 게시글이 없습니다."));
@@ -106,7 +107,7 @@ public class BoardService {
         UserEntity user = userRepository.findById(userDetails.getUser().getUserId())
                 .orElseThrow();
 
-        Set<Long> favoriteBoardIds = favoriteRepository.findByUser(user).stream()
+        Set<Long> favoriteBoardIds = boardFavoriteRepository.findByUser(user).stream()
                 .map(f -> f.getBoard().getId())
                 .collect(Collectors.toSet());
 
